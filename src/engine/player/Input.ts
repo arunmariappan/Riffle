@@ -8,6 +8,8 @@ export class Input {
   private readonly listeners: [EventTarget, string, EventListener][] = [];
   /** True while typing in a UI field, so movement keys don't fire. */
   uiFocused = false;
+  /** Photo mode: look around by dragging with the right mouse button (the left button focuses). */
+  dragLook = false;
 
   constructor(element: HTMLElement) {
     this.element = element;
@@ -19,10 +21,14 @@ export class Input {
     this.on(window, 'keyup', (e) => this.keys.delete((e as KeyboardEvent).code));
     this.on(window, 'blur', () => this.keys.clear());
     this.on(document, 'mousemove', (e) => {
-      if (document.pointerLockElement === this.element) {
-        this.mouseDX += (e as MouseEvent).movementX;
-        this.mouseDY += (e as MouseEvent).movementY;
+      const me = e as MouseEvent;
+      if (document.pointerLockElement === this.element || (this.dragLook && (me.buttons & 2) !== 0)) {
+        this.mouseDX += me.movementX;
+        this.mouseDY += me.movementY;
       }
+    });
+    this.on(element, 'contextmenu', (e) => {
+      if (this.dragLook) e.preventDefault();
     });
     this.on(element, 'wheel', (e) => {
       this.wheel += Math.sign((e as WheelEvent).deltaY);

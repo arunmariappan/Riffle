@@ -46,6 +46,7 @@ import { EcologySystem } from '../ecology/EcologySystem';
 import { Rain } from '../weather/Rain';
 import { Kingfisher } from '../fauna/Kingfisher';
 import type { KingfisherWorld } from '../../sim/fauna/kingfisher';
+import { PhotoMode } from '../photo/PhotoMode';
 
 export interface WorldOptions {
   seed: string;
@@ -99,6 +100,14 @@ export class World {
   readonly ecology: EcologySystem;
   /** 0..1 how wet the ground is after rain. */
   wetness = 0;
+  /** Photo mode: the free camera, the lens and captures (plan 6.10). */
+  readonly photo: PhotoMode;
+  /** Exposure compensation from photo mode (a multiplier). */
+  exposureBias = 1;
+  /** True while a time-lapse records: season looks and weather follow every frame at once. */
+  capturing = false;
+  /** Animation time held while photo mode is paused. */
+  private photoTime: number | null = null;
   /** Called on each lightning flash with the delay until its thunder (seconds) and its strength (Phase 7 audio). */
   onLightning: ((thunderDelay: number, strength: number) => void) | null = null;
   /** Every placed thing behind stable ids, and your edit layer (plan 6.4, 6.8). */
@@ -225,6 +234,7 @@ export class World {
     this.player.setWater(this.flow);
     this.lookFrom(start);
     this.ecology = new EcologySystem(this, { allFish: parts.allFish });
+    this.photo = new PhotoMode(this);
     this.items.onFishChange = (item, added) => this.ecology.fishChanged(item, added);
   }
 
@@ -570,9 +580,11 @@ export class World {
   // --- Modes ---------------------------------------------------------------------------------------------------
 
   setMode(mode: CameraMode): void {
-    if (mode === this.mode) return;
+    if (mode === this.mode || this.photo.busy) return;
     const was = this.mode;
+    if (was === 'photo') this.photo.exit();
     this.mode = mode;
+    if (mode === 'photo') this.photo.enter(this.engine.camera);
     this.builderCamera.enabled = mode === 'builder';
     if (mode === 'builder') {
       this.input.unlockPointer();
@@ -806,7 +818,12 @@ export class World {
   update(info: FrameInfo): void {
     const { camera } = this.engine;
     const simDt = this.clock.advance(info.dt);
-    const windTime = this.frozenTime ?? info.time;
+    // A paused photo holds everything still: wind, water, particles and fish.
+    const still = this.mode === 'photo' && this.photo.settings.pause && !this.capturing;
+    if (still) this.photoTime ??= info.time;
+    else this.photoTime = null;
+    const animDt = still ? 0 : info.dt;
+    const windTime = this.frozenTime ?? this.photoTime ?? info.time;
     (this.wind.time as any).value = windTime;
     globals.time.value = windTime;
     (globals.player.value as THREE.Vector3).copy(this.player.position);
@@ -814,6 +831,7 @@ export class World {
     if (this.mode === 'explore') this.player.update(info.dt, this.input, camera);
     else if (this.mode === 'builder') this.builderCamera.update(info.dt, this.input, camera, !this.wheelCaptured);
     else if (this.mode === 'follow') this.updateFollow(info.dt);
+    else if (this.mode === 'photo') this.photo.update(info.dt, this.input, camera);
     this.physics.step(info.dt);
     this.items.update(info.dt);
 
@@ -822,7 +840,7 @@ export class World {
     const target = mode === 'auto' ? this.seasonalWeather() : WEATHER_LOOKS[mode];
     Object.assign(
       this.weather,
-      blendWeather(this.weather, target, Math.min(1, info.dt * 0.6 + (info.frame < 2 ? 1 : 0))),
+      blendWeather(this.weather, target, this.capturing ? 0.35 : Math.min(1, info.dt * 0.6 + (info.frame < 2 ? 1 : 0))),
     );
     // Lightning comes with the storm itself, not halfway through the blend.
     this.weather.lightning = target.lightning;
@@ -875,10 +893,10 @@ export class World {
     const flash = this.updateLightning(info.dt);
     this.exposure +=
       (this.atmosphere.targetExposure - this.exposure) * Math.min(1, info.dt * 2 + (info.frame < 2 ? 1 : 0));
-    renderer.toneMappingExposure = this.exposure * (1 + flash * 2.5);
+    renderer.toneMappingExposure = this.exposure * (1 + flash * 2.5) * (this.mode === 'photo' ? this.exposureBias : 1);
 
     this.seasonTimer -= info.dt;
-    if (this.seasonTimer <= 0) {
+    if (this.seasonTimer <= 0 || this.capturing) {
       this.seasonTimer = 1;
       this.trees.setSeason(weights);
       this.plants.setSeason(weights);
@@ -904,21 +922,21 @@ export class World {
     this.terrain.update(camera.position);
     this.trees.update(camera.position, info.time);
     this.plants.update(camera.position, info.time);
-    this.air.update(info.dt, camera.position, windTime, this.windState);
+    this.air.update(animDt, camera.position, windTime, this.windState);
     this.grass.update(camera.position);
-    this.debris.update(info.dt, camera.position, info.time);
+    this.debris.update(animDt, camera.position, windTime);
     if (this.flow.revision !== this.flowRevision) {
       this.flowRevision = this.flow.revision;
       this.waterFx.setWaterfall(this.flow.waterfallInfo());
       this.plants.invalidate();
     }
     this.waterFx.update(
-      info.dt,
+      animDt,
       camera,
       (x, z) => windVelocityAt(this.windState, x, z, windTime),
       (x, z) => this.flow.surfaceAt(x, z) ?? this.heightAt(x, z),
     );
-    this.fish.update(info.dt, this.player.position, this.clock.dayOfYear, this.clock.hour);
+    if (!still) this.fish.update(info.dt, this.player.position, this.clock.dayOfYear, this.clock.hour);
     this.rain.update(
       this.weather.rain,
       this.windState.dirX * this.windState.speed,
@@ -927,7 +945,7 @@ export class World {
       windTime,
       sunLight + this.sky.hemi.intensity * 0.3,
     );
-    this.kingfisher.update(info.dt, this.kingfisherWorld(), camera.position);
+    this.kingfisher.update(animDt, this.kingfisherWorld(), camera.position);
     // The stretches follow the water after edits (a few seconds after the last change).
     this.stretchTimer -= info.dt;
     if (this.flow.revision !== this.stretchRevision && this.stretchTimer <= 0) {

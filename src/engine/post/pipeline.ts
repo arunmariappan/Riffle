@@ -72,6 +72,7 @@ export function createPipeline(
   camera: THREE.Camera,
   quality: QualityPreset,
   controls: PostControls,
+  options: { temporal?: boolean } = {},
 ): PipelineHandle {
   const pipeline = new THREE.RenderPipeline(renderer);
   const scenePass: any = pass(scene, camera);
@@ -117,7 +118,8 @@ export function createPipeline(
       const occlusion = giPass.getAONode().r;
       color = vec4(sceneColor.rgb.mul(occlusion).add(sceneDiffuse.rgb.mul(gi)), sceneColor.a);
     }
-    color = traa(color, depth, vel, camera);
+    // Photo accumulation does its own anti-aliasing (and moves the camera between frames), so it skips TRAA.
+    if (options.temporal !== false) color = traa(color, depth, vel, camera);
   }
 
   // Bloom on bright highlights only (sun glints, foam in sunlight).

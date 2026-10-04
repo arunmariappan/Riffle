@@ -57,7 +57,7 @@ on your PC later. This section is updated at the end of every phase; each phase 
 | 5 — Fish | M3 | **Code done** (G7–G10 pending) | All six species from content files with their own bodies, fins and patterns (stripes, pearl spots, leopard spots, koi patches, gold metallic scales, a shining lateral line), iridescence and backlit fins; genes per fish; habitat seeking, loaches clinging in the rapids, rises to insects, food, curiosity, night rest, koi gliding; the pond for koi; inspect and follow; a 500-fish benchmark. Not seen on screen yet |
 | 6 — Ecosystem and evolution | M3 | **Code done** (G11–G14 pending) | The ecology worker: the stream as 50 m stretches with their water (temperature, oxygen and its dawn low, light, insects, algae, nutrients), fish cohorts with five heritable traits (breeder's equation; predators pull color one way, mates the other; koi patterns mix), the mahseer's monsoon run, the kingfisher, weather that follows the seasons with a catchment (rain raises and clouds the stream after a delay), plants that grow, spread and die back, individual fish near the camera handed off from the cohorts, rain, rain rings, wet ground, lightning, the Ecosystem panel with graphs, saves version 2. Reproducible, balanced for 10 years, both adaptation experiments pass (unit tests). Not seen on screen yet |
 | 7 — Spatial nature audio | M4 | **Code done** (G15–G16 pending) | Every sound generated live in code (C27): the stream through 8 emitters that slide along the river with you, mixing pool gurgles, riffle babble and rapids roar from the solved flow; the waterfall; wind shaped by the visuals' gusts with leaf, pine, grass and bamboo rustle (knocks and creaks); rain on leaves, rock and water; thrushes, songbirds, cicadas and frogs by hour and season; the kingfisher; rising fish; thunder after lightning; footsteps by surface; the underwater muffle; HRTF panners; sound on/off and volume. Not heard yet |
-| 8 — Photo mode and time-lapse | M4 | Not started | |
+| 8 — Photo mode and time-lapse | M4 | **Code done** (G17–G19 pending) | Photo mode (P): a free camera with collision, a real lens (focal length, aperture, focus; click to focus), exposure, six filters, a thirds grid, hide the controls; stills accumulate 64–256 frames with sub-pixel, lens-aperture and sun-disk samples (smooth edges, true depth of field and bokeh, soft shadows) and save as PNG up to 4K; time-lapses of a day, a season or a year from a fixed camera or a 2–5 keyframe path, encoded by WebCodecs and muxed by Mediabunny into an MP4 streamed to disk. Recording doesn't change the simulation (unit-tested). Not seen on screen yet |
 | 9 — Polish and hardening | M4 | Not started | |
 
 ### Open points and pending items
@@ -87,6 +87,8 @@ on your PC later. This section is updated at the end of every phase; each phase 
 | P21 | **The Phase 6 visuals haven't been seen on screen**: rain streaks, rings on the water, wet ground and stones, the lightning flash, the kingfisher, the Ecosystem panel's graphs and the ecology overlays. Most likely to need tuning after G12–G13: rain density and brightness, the ring size, how dark wet ground gets, the flash strength, the bird's scale and colors. The simulation behind them is unit-tested. | You (G12, G13), then a session with the fixes | Phase 6 | Open |
 | P22 | **Trees and grass don't take part in the plant ecology yet**: ground plants and water plants grow, spread and die back (C25), but trees stay as placed and the grass density doesn't respond to moisture (only its look follows the season). | Me | Phase 6 | Open (later) |
 | P24 | **Nobody has listened to the sounds yet** (a cloud session can't). They are generated, not recorded (C27), so expect a tuning pass after G16: the balance between stream, wind and life, how natural the bird songs and frogs sound, rain and thunder levels. Recorded CC0 sounds can replace any of them later (`NatureAudio` plays sample buffers the same way). | You (G16), then a session with the fixes | Phase 7 | Open |
+| P25 | **Photo mode and time-lapses haven't been tried** (no GPU in the cloud session). Most likely to need a fix after G18: how the developing photo shows on screen and the PNG's orientation and colors (both read back from render targets), shadows with the jittered sun (cascaded shadow maps), memory at 4K (the whole pipeline is rebuilt at the output size), and the encoder's choices on your GPU. | You (G17, G18), then a session with the fixes | Phase 8 | Open |
+| P26 | **Long captures are long GPU loads**: 256-sample 4K stills and year-long 4K time-lapses wait for P1 (G19). The defaults stay short: 64 samples at screen size, 1080p time-lapses. | You (after P1) | Phase 8 | Open |
 | P23 | **Fish are shown individually only near the camera** (the two-level hand-off: stretches within about 80 m). Looking down from high in the builder, far stretches show no fish. `?allfish` shows every stretch at once (tests, the fish benchmark). | — | Phase 6 | Accepted |
 
 ### Changes from the plan made during implementation
@@ -120,6 +122,8 @@ on your PC later. This section is updated at the end of every phase; each phase 
 | C25 | Every plant takes part, and grass and plant carpets are density fields re-scattered by tile | Ground plants and water plants grow, spread (wind seeds downwind, fragments and plantlets downstream, runners) and die back as individuals, each with a growth-versus-spread gene; trees and grass stay as placed (P22) | The individual plants are where the spreading shows; tolerance curves for them are in their JSON files |
 | C27 | Sounds from freesound.org (CC0) or your recordings | Every sound is generated in code: water from bubbles (Minnaert resonances) and filtered noise, wind from noise shaped by the same gusts as the visuals, rain drop by drop, bird songs, cicadas, frogs, thunder and footsteps synthesized fresh each time (`src/audio/dsp/`) | No downloads or licenses, nothing ever loops (the plan's 10-minute test), and every sound follows the simulation's numbers directly |
 | C28 | 3D sound through three.js `AudioListener` / `PositionalAudio` | Web Audio `PannerNode`s (HRTF) placed directly, the listener set from the camera each frame (`src/audio/AudioEngine.ts`) | The emitters are AudioWorklet nodes moved every 50 ms; three's wrappers would add nothing |
+| C29 | Depth of field in photo mode's live view | The live view shows the sharp range as numbers ("sharp from 3.1 m to 7.4 m"); depth of field and bokeh appear in the photo, from real lens-aperture samples | A post-process blur would be another shader to compile and would look different from the photo |
+| C30 | Accumulation averages the rendered frames | It averages the pipeline's final, tone-mapped frames (with TRAA off, since accumulation does the anti-aliasing and moves the camera) | The pipeline stays untouched. Averaging after tone mapping makes very bright bokeh highlights a little dimmer than a linear average would |
 | C26 | The discharge slider sets the stream's flow | The slider sets the usual (dry-weather) flow; the seasons and the catchment scale it (about ×0.6 before the monsoon, ×1.4 in it, more for a day or two after heavy rain). "Rain raises the stream" in the Ecosystem panel turns it off; valleys saved before Phase 6 open with it off | Rain raising the discharge after a delay (plan 6.7) needs the stream to follow the weather; old saves keep the stream they had |
 
 ### Local GPU checks (run on your PC)
@@ -145,6 +149,9 @@ wait for P1/P2. Commands assume `pnpm dev` is running, except the benchmark (`pn
 | G13 | **First look at the kingfisher, the Ecosystem panel and the hand-off**: the bird's blue back, orange breast and size, perching, flying low, hovering and diving with a splash; the graphs readable; the Oxygen, Light, Temperature and Fish overlays line up with the water; walking along the stream, fish never pop in or out in front of you | Manual, `pnpm dev` (Ecosystem tab; Season lapse for a minute) | 6 | Open |
 | G15 | **Phase 7 e2e** (`tests/e2e/audio.spec.ts`, measured on the mix with an analyser): a click starts the sound; the rapids are louder than the pool and walking between them never jumps; the water speed and wind sliders are audible; diving muffles (cutoff under 1 kHz, the mix much darker); the sound button mutes and is remembered | `pnpm test:e2e tests/e2e/audio.spec.ts` | 7 | Open (tests written) |
 | G16 | **Ten-minute listen** with headphones (`pnpm dev`, click once): walk from the rapids to the pool and the waterfall; dawn (thrushes, the chorus), a hot pre-monsoon afternoon (cicadas), a monsoon night (frogs, rain), a storm (thunder after the flash); dive; walk on gravel, moss, leaves and through shallow water; the kingfisher's call. Nothing should repeat noticeably or sound synthetic enough to distract; note anything to tune (P24) | Manual, `pnpm dev` (Time & weather sets the hour, day and weather) | 7 | Open |
+| G17 | **Phase 8 e2e** (`tests/e2e/photo.spec.ts`): P opens photo mode; a 64-frame 1080p still saves as a PNG and is smoother than a single frame; f/1.4 focused at 1.5 m blurs the background more than f/22; a one-day time-lapse records an MP4 (`ftyp`) and leaves the valley a day later; a recorded season gives the same ecosystem (hash) as simply running the season | `pnpm test:e2e tests/e2e/photo.spec.ts` (short GPU runs, about a minute each) | 8 | Open (tests written) |
+| G18 | **First look at photo mode** (`pnpm dev`, P): moving and looking (right-drag), click to focus, the sharp-range readout, filters and exposure, the grid, H to hide the controls; take a 64-frame photo at screen size and compare it with the live view (edges, shadows, depth of field at f/1.4); record a one-day time-lapse at 1080p and play it | Manual, `pnpm dev` | 8 | Open |
+| G19 | **The Phase 8 done-when**: a 256-frame 4K still saves correctly and looks clearly better than the live view; a one-year time-lapse (a frame a day: blossom → monsoon → autumn → snow) records to a playable MP4 | Manual, after P1 (long GPU runs) | 8 | Open (after P1) |
 | G14 | **Season-lapse soak**: 10 minutes at Season lapse (about 5 simulated years): fps steady, no memory growth, the flow re-solves after rain don't hitch | A long GPU run: waits for P1 | 6 | Open (after P1) |
 
 ### Handoff to the cloud session
@@ -1269,6 +1276,33 @@ keyframe path, WebCodecs + Mediabunny streaming to disk).
 **Done when:** a 256-sample 4K still saves correctly and looks clearly better than the live view; a one-year
 time-lapse (blossom → monsoon → autumn → snow) records to a playable MP4; recording doesn't change the simulation (it
 stays reproducible).
+
+**Built (2026-10-04, cloud session; code done, not seen on screen yet, see P25, P26 and G17–G19):**
+- **Photo mode** (`src/engine/photo/PhotoMode.ts`, P or the Photo button): a free camera (WASD, Q/E, Shift; right-drag
+  to look, the wheel zooms) that stays above the ground and out of the stones and can go underwater; a lens on a
+  full-frame sensor (14–200 mm, f/1.4–f/22, focus 0.3–500 m; click the view to focus there) with the sharp range shown
+  (C29); exposure compensation (±3 EV); six filters that stay natural (natural, warm light, cool morning, vivid, soft
+  film, black and white; `src/photo/filters.ts`); a rule-of-thirds grid; H hides the controls; the valley pauses
+  (wind, water, particles and fish held still) or keeps running.
+- **Stills by accumulation** (`src/photo/lens.ts`, `src/engine/photo/Accumulator.ts`): taking a photo stops the frame
+  loop, rebuilds the pipeline at the output size without TRAA (C30) and renders 64, 128 or 256 frames. Each one shifts
+  the view by a fraction of a pixel (Halton jitter), moves the eye to a point on the lens aperture while shifting the
+  image so the focus plane stays put (thin-lens depth of field and bokeh), and moves the sun to a point on its disk
+  (soft shadows). The frames are averaged in half-float targets, shown developing on screen, read back and saved as a
+  PNG (screen size, 1080p, 1440p or 4K) through the save dialog.
+- **Time-lapse** (`src/photo/timelapse.ts`, `src/engine/photo/TimeLapse.ts`): a day (a frame every 1, 2 or 5
+  minutes), a season (every hour, 3 hours or day) or a year (every 12 hours, day or 2 days; whole days keep the hour,
+  so a year shows the seasons without day and night flicker). The camera is the current view or a smooth path through
+  2–5 keyframes. Each frame sets the clock to its exact moment, lets the ecosystem catch up in its own fixed steps,
+  updates the world (season looks and weather follow at once), lightly accumulates (1, 4 or 8 samples), and goes to
+  WebCodecs (H.264 first, else HEVC, VP9 or AV1) and Mediabunny, which streams the MP4 straight into the file. The
+  valley is left at the end of the span.
+- **Recording doesn't change the simulation**: the ecosystem advances in fixed hourly and daily steps whatever the
+  frame steps are; a unit test checks that a season recorded frame by frame hashes the same as one long run.
+- **Tests**: 147 unit tests (+9): focal length and field of view, depth of field, the lens shift keeping the focus
+  plane fixed while blurring near and far points, even sample patterns, the sun disk, time-lapse plans and camera
+  paths (smooth, the short way round), filters, and the recording-reproducibility check. e2e
+  `tests/e2e/photo.spec.ts` (G17).
 
 ### Phase 9 — Polish and hardening (M)
 

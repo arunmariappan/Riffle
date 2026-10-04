@@ -183,6 +183,11 @@ export class Engine {
     }
   }
 
+  /** Puts the drawing size back to the canvas (after a capture at another resolution). */
+  refreshSize(): void {
+    this.applySize();
+  }
+
   private observeResize(canvas: HTMLCanvasElement): void {
     this.resizeObserver = new ResizeObserver(() => this.applySize());
     this.resizeObserver.observe(canvas);

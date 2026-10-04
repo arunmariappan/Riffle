@@ -104,6 +104,10 @@ export interface UiState {
   busy: string | null;
   inspect: FishInfo | null;
   ecology: EcologyUi | null;
+  /** Photo mode: hide every control (H). */
+  hideUi: boolean;
+  /** Photo mode: show the rule-of-thirds grid. */
+  photoGrid: boolean;
   /** Your preferences (sound), kept in this browser. */
   prefs: Preferences;
   setPrefs: (p: Partial<Preferences>) => void;
@@ -136,6 +140,8 @@ export const useUi = create<UiState>((set) => ({
   busy: null,
   inspect: null,
   ecology: null,
+  hideUi: false,
+  photoGrid: false,
   prefs: loadPreferences(),
   setPrefs: (p) =>
     set((s) => {

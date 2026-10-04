@@ -292,7 +292,17 @@ export class EcologySystem {
         this.historyRevision++;
       });
     }
-    this.dischargeTimer -= dt;
+    // During a time-lapse each frame is hours or days apart: let the stream follow the rain much sooner.
+    this.dischargeTimer -= this.world.capturing ? dt * 15 : dt;
+  }
+
+  /** Catches the ecosystem up to the clock now and waits for it (time-lapse frames). */
+  async syncNow(): Promise<void> {
+    while (this.syncing) await new Promise((resolve) => setTimeout(resolve, 2));
+    for (let k = 0; k < 12; k++) {
+      await this.sync();
+      if (!this.report || this.report.seconds >= this.world.clock.seconds - 1) break;
+    }
   }
 
   private async sync(): Promise<void> {
@@ -606,6 +616,11 @@ export class EcologySystem {
     if (next.length !== this.stretches.length) return;
     this.stretches = next;
     void this.api.setStretches(next);
+  }
+
+  /** A fingerprint of the ecosystem's state (tests: recording doesn't change the simulation). */
+  async hash(): Promise<string> {
+    return (await this.api?.hash()) ?? '';
   }
 
   /** The ecology's state as binary save sections. */

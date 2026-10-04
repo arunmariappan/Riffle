@@ -520,3 +520,58 @@
   color: var(--muted);
   text-align: right;
 }
+
+.progress {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.progressBar {
+  height: 100%;
+  background: var(--accent-2);
+  transition: width 0.2s;
+}
+
+.thirds {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.thirds div {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.thirds div:nth-child(1),
+.thirds div:nth-child(2) {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.thirds div:nth-child(1) {
+  left: 33.333%;
+}
+
+.thirds div:nth-child(2) {
+  left: 66.667%;
+}
+
+.thirds div:nth-child(3),
+.thirds div:nth-child(4) {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+.thirds div:nth-child(3) {
+  top: 33.333%;
+}
+
+.thirds div:nth-child(4) {
+  top: 66.667%;
+}

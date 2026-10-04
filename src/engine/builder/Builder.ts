@@ -152,9 +152,10 @@ export class Builder {
     });
     this.on(window, 'keydown', (e) => this.onKey(e as KeyboardEvent));
     world.onModeChange((mode) => this.onMode(mode));
-    useUi
-      .getState()
-      .set({ settings: structuredClone(world.settings), mode: world.mode === 'builder' ? 'builder' : 'explore' });
+    useUi.getState().set({
+      settings: structuredClone(world.settings),
+      mode: world.mode === 'builder' ? 'builder' : world.mode === 'photo' ? 'photo' : 'explore',
+    });
   }
 
   private on(target: EventTarget, type: string, fn: EventListener): void {
@@ -182,13 +183,12 @@ export class Builder {
   // --- Modes, tools and settings -------------------------------------------------------------------------------
 
   setMode(mode: AppMode): void {
-    if (mode === 'photo') return;
     this.world.setMode(mode);
   }
 
   private onMode(mode: string): void {
     const ui = useUi.getState();
-    ui.set({ mode: mode === 'builder' ? 'builder' : 'explore', hint: null });
+    ui.set({ mode: mode === 'builder' ? 'builder' : mode === 'photo' ? 'photo' : 'explore', hint: null });
     if (mode !== 'builder') {
       this.cancelDrag();
       this.select([]);
@@ -828,6 +828,21 @@ export class Builder {
       e.preventDefault();
       if (this.world.mode === 'follow') this.world.stopFollowing();
       this.setMode(this.world.mode === 'builder' ? 'explore' : 'builder');
+      return;
+    }
+    // P: photo mode (plan 6.10); in it, H hides the controls and Esc goes back to exploring.
+    if (e.code === 'KeyP' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      if (this.world.mode === 'follow') this.world.stopFollowing();
+      this.setMode(this.world.mode === 'photo' ? 'explore' : 'photo');
+      return;
+    }
+    if (this.world.mode === 'photo') {
+      const ui = useUi.getState();
+      if (e.code === 'KeyH') ui.set({ hideUi: !ui.hideUi });
+      else if (e.code === 'Escape' && !this.world.photo.busy) {
+        if (ui.hideUi) ui.set({ hideUi: false });
+        else this.setMode('explore');
+      }
       return;
     }
     if (this.world.mode === 'follow' && e.code === 'Escape') {

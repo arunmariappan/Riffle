@@ -16,6 +16,7 @@ import { FishCard } from './shell/FishCard';
 import { CatalogPanel } from './builder/CatalogPanel';
 import { Toolbar } from './builder/Toolbar';
 import { ControlPanel } from './panels/ControlPanel';
+import { PhotoPanel, ThirdsGrid } from './panels/PhotoPanel';
 import { useUi, type AppMode } from '../state/store';
 import { decodeSave, type SaveData } from '../save/saveData';
 import { Autosaver } from '../save/autosave';
@@ -121,6 +122,8 @@ export function App({ adapterInfo }: { adapterInfo: string }) {
   const sceneRef = useRef<TestSceneHandle | null>(null);
   const mode = useUi((s) => s.mode);
   const toast = useUi((s) => s.toast);
+  const hideUi = useUi((s) => s.hideUi);
+  const photoGrid = useUi((s) => s.photoGrid);
 
   const latestAutosave = useCallback(async () => {
     const saver = new Autosaver(store, async () => new Uint8Array());
@@ -320,8 +323,14 @@ export function App({ adapterInfo }: { adapterInfo: string }) {
     return () => document.removeEventListener('pointerlockchange', onChange);
   }, []);
 
-  const onCanvasClick = () => {
-    if (world && world.mode === 'explore') world.input.lockPointer();
+  const onCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!world) return;
+    if (world.mode === 'explore') world.input.lockPointer();
+    else if (world.mode === 'photo' && !world.photo.busy) {
+      // Click to focus where you point.
+      const r = e.currentTarget.getBoundingClientRect();
+      world.photo.focusAt(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    }
   };
 
   const changeQuality = (q: QualityPreset) => {
@@ -372,7 +381,8 @@ export function App({ adapterInfo }: { adapterInfo: string }) {
         </div>
       )}
       {loading && <LoadingScreen label={loading.label} fraction={loading.fraction} />}
-      {world && builder && !loading && ui && (
+      {world && mode === 'photo' && photoGrid && ui && <ThirdsGrid />}
+      {world && builder && !loading && ui && !(mode === 'photo' && hideUi) && (
         <>
           <TopBar
             onMode={onMode}
@@ -390,6 +400,7 @@ export function App({ adapterInfo }: { adapterInfo: string }) {
               <PlacementHint />
             </>
           )}
+          {mode === 'photo' && <PhotoPanel world={world} />}
           <FishCard builder={builder} />
           <Toasts />
         </>

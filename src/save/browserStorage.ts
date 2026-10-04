@@ -67,16 +67,35 @@ export async function requestPersistence(): Promise<boolean> {
   }
 }
 
-const PICKER_TYPES = [{ description: 'Riffle valley', accept: { 'application/x-riffle': ['.riffle'] } }];
+/** A kind of file the save dialog offers. */
+export interface FileKind {
+  description: string;
+  mime: string;
+  ext: string;
+}
 
-/** "Save valley as…": a save dialog when the browser has one, a download otherwise. */
-export async function saveToDisk(bytes: Uint8Array, suggestedName: string): Promise<boolean> {
+export const VALLEY_FILE: FileKind = { description: 'Riffle valley', mime: 'application/x-riffle', ext: '.riffle' };
+export const PNG_FILE: FileKind = { description: 'PNG image', mime: 'image/png', ext: '.png' };
+export const MP4_FILE: FileKind = { description: 'MP4 video', mime: 'video/mp4', ext: '.mp4' };
+
+const PICKER_TYPES = [{ description: VALLEY_FILE.description, accept: { [VALLEY_FILE.mime]: [VALLEY_FILE.ext] } }];
+
+function pickerTypes(kind: FileKind) {
+  return [{ description: kind.description, accept: { [kind.mime]: [kind.ext] } }];
+}
+
+/** "Save valley as…" (and photos): a save dialog when the browser has one, a download otherwise. */
+export async function saveToDisk(
+  bytes: Uint8Array | Blob,
+  suggestedName: string,
+  kind: FileKind = VALLEY_FILE,
+): Promise<boolean> {
   const w = window as unknown as PickerWindow;
   if (w.showSaveFilePicker) {
     try {
-      const handle = await w.showSaveFilePicker({ suggestedName, types: PICKER_TYPES });
+      const handle = await w.showSaveFilePicker({ suggestedName, types: pickerTypes(kind) });
       const writable = await handle.createWritable();
-      await writable.write(bytes as BufferSource);
+      await writable.write(bytes as BufferSource | Blob);
       await writable.close();
       return true;
     } catch (err) {
@@ -84,13 +103,33 @@ export async function saveToDisk(bytes: Uint8Array, suggestedName: string): Prom
       throw err;
     }
   }
-  const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'application/octet-stream' }));
+  const blob = bytes instanceof Blob ? bytes : new Blob([bytes as BlobPart], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = suggestedName;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
   return true;
+}
+
+/**
+ * A file stream to write a long capture into as it is made (time-lapses), from the save dialog. Null when you cancel;
+ * 'unsupported' when the browser has no save dialog (the capture is then kept in memory and downloaded).
+ */
+export async function pickWritable(
+  suggestedName: string,
+  kind: FileKind,
+): Promise<FileSystemWritableFileStream | null | 'unsupported'> {
+  const w = window as unknown as PickerWindow;
+  if (!w.showSaveFilePicker) return 'unsupported';
+  try {
+    const handle = await w.showSaveFilePicker({ suggestedName, types: pickerTypes(kind) });
+    return await handle.createWritable();
+  } catch (err) {
+    if ((err as DOMException).name === 'AbortError') return null;
+    throw err;
+  }
 }
 
 /** "Open valley…": an open dialog when the browser has one, a file input otherwise. Null when cancelled. */
