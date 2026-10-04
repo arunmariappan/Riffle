@@ -1,0 +1,27 @@
+{
+  "id": "bamboo",
+  "name": "Bamboo",
+  "description": "Tall clumps that sway in wide, slow arcs and creak in the wind.",
+  "category": "trees",
+  "generator": { "kind": "bamboo", "height": [7, 12], "variants": 3 },
+  "look": {
+    "leafColor": "#527e26",
+    "premonsoon": { "color": "#8a8a30", "mix": 0.3 },
+    "leafAmount": { "winter": 0.85, "spring": 1, "premonsoon": 0.9, "monsoon": 1, "autumn": 1 }
+  },
+  "wind": { "stiffness": 0.7 },
+  "placement": {
+    "surface": "land",
+    "riverDistance": [2.5, 28],
+    "heightAboveBank": [0, 12],
+    "maxSlope": 0.3,
+    "wetness": [0.3, 1],
+    "spacing": 6,
+    "density": 0.9
+  },
+  "tolerance": {
+    "temperature": { "limits": [-4, 36], "ideal": [10, 30] },
+    "moisture": { "limits": [0.3, 1], "ideal": [0.55, 1] }
+  },
+  "growth": { "yearsToMature": 4, "lifespanYears": 40, "spread": "runners", "spreadRate": 0.6, "spreadDistance": 4 }
+}

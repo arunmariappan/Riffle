@@ -63,8 +63,9 @@ export class SkySystem {
     scene.add(this.sun);
     scene.add(this.sun.target);
 
-    this.moon = new THREE.DirectionalLight(0x9fb4ff, 0);
+    this.moon = new THREE.DirectionalLight(0x8aa6ff, 0);
     scene.add(this.moon);
+    scene.add(this.moon.target);
 
     this.hemi = new THREE.HemisphereLight(0xbfd8ff, 0x4a5a32, 0.25);
     scene.add(this.hemi);
@@ -100,17 +101,22 @@ export class SkySystem {
     this.sun.intensity = this.sunStrength * daylight * (1 - state.cloudCover * 0.65);
     this.sun.position.copy(focus).add(state.direction.clone().multiplyScalar(400));
     this.sun.target.position.copy(focus);
-    this.sun.castShadow = daylight > 0.02;
+    // Never toggle castShadow at runtime: it changes the lighting setup and recompiles every material.
+    this.sun.castShadow = true;
 
     // Moon light at night.
     const moonUp = state.moonDirection.y;
     const night = 1 - daylight;
-    this.moon.intensity = night * THREE.MathUtils.smoothstep(moonUp, 0, 0.2) * 0.35;
+    // Strong enough to clear the tone curve's dark toe: a moonlit night should still read (plan 4).
+    this.moon.intensity = night * THREE.MathUtils.smoothstep(moonUp, -0.05, 0.25) * 1.1;
     this.moon.position.copy(focus).add(state.moonDirection.clone().multiplyScalar(400));
     this.moon.target.position.copy(focus);
 
     // Fill light from the sky: brighter by day, very low at night.
-    this.hemi.intensity = (0.05 + daylight * 0.15) * this.hemiStrength;
+    // Sky fill: blue-grey glow at night and through twilight, warmer by day.
+    const twilightGlow = THREE.MathUtils.smoothstep(sunUp, -0.2, -0.02) * (1 - daylight);
+    this.hemi.color.setRGB(0.55 + daylight * 0.2, 0.65 + daylight * 0.2, 1);
+    this.hemi.intensity = (0.5 * (1 - daylight) + twilightGlow * 0.9 + daylight * 0.15) * this.hemiStrength;
 
     const moved = this.lastEnvSun.angleTo(state.direction) > THREE.MathUtils.degToRad(0.5);
     const cloudChanged = Math.abs(this.lastEnvCloud - state.cloudCover) > 0.03;
@@ -120,12 +126,20 @@ export class SkySystem {
   private captureEnvironment(direction: THREE.Vector3, cloud: number, daylight: number): void {
     this.lastEnvSun.copy(direction);
     this.lastEnvCloud = cloud;
-    const previous = this.envTarget;
-    this.envTarget = this.pmrem.fromScene(this.envScene, 0.02);
-    this.scene.environment = this.envTarget.texture;
+    // Re-render into the same target: a new environment texture object would make every material recompile.
+    const first = this.envTarget === null;
+    this.envTarget = this.pmrem.fromScene(
+      this.envScene,
+      0.02,
+      0.1,
+      100,
+      this.envTarget ? { renderTarget: this.envTarget } : {},
+    );
+    if (first) this.scene.environment = this.envTarget.texture;
     // Keep reflections and sky light dim at night (the sky model has no stars or moonlit sky).
-    this.scene.environmentIntensity = (0.08 + daylight * 0.92) * this.skyLightStrength;
-    previous?.dispose();
+    // The sky stays bright around sunrise and sunset even as direct sun fades: boost sky light at golden hour.
+    const golden = Math.max(0, 1 - Math.abs(direction.y - 0.04) / 0.18);
+    this.scene.environmentIntensity = (0.1 + daylight * 0.9) * this.skyLightStrength * (1 + golden * 1.4);
   }
 
   dispose(): void {

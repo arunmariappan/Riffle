@@ -1,0 +1,65 @@
+{
+  "id": "japanese-maple",
+  "name": "Japanese maple",
+  "description": "Delicate layered branches; fresh green in spring, fiery red in autumn.",
+  "category": "trees",
+  "generator": {
+    "kind": "ez-tree",
+    "preset": "Ash Small",
+    "height": [6, 10],
+    "variants": 3,
+    "bark": "trident_maple_bark",
+    "barkTint": "#c0b0a0",
+    "shape": "spreading"
+  },
+  "look": {
+    "leafColor": "#4a7a24",
+    "spring": {
+      "color": "#86b83a",
+      "mix": 0.45
+    },
+    "autumn": {
+      "color": "#c4241a",
+      "mix": 0.9
+    },
+    "winter": {
+      "color": "#8a4a2a",
+      "mix": 0.6
+    },
+    "leafAmount": {
+      "winter": 0.04,
+      "spring": 0.9,
+      "premonsoon": 1,
+      "monsoon": 1,
+      "autumn": 0.75
+    }
+  },
+  "wind": {
+    "stiffness": 0.9
+  },
+  "placement": {
+    "surface": "land",
+    "riverDistance": [4, 70],
+    "heightAboveBank": [0.4, 35],
+    "maxSlope": 0.32,
+    "spacing": 6,
+    "density": 1
+  },
+  "tolerance": {
+    "temperature": {
+      "limits": [-10, 32],
+      "ideal": [4, 24]
+    },
+    "moisture": {
+      "limits": [0.2, 1],
+      "ideal": [0.4, 0.85]
+    }
+  },
+  "growth": {
+    "yearsToMature": 15,
+    "lifespanYears": 100,
+    "spread": "wind-seeds",
+    "spreadRate": 0.25,
+    "spreadDistance": 30
+  }
+}

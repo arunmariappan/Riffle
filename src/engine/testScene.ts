@@ -12,7 +12,7 @@ import {
   createPolyLeafMaterial,
   createFoliageLook,
 } from './vegetation/materials';
-import { createGrassMesh, createGrassLook, scatterBlades } from './vegetation/grass';
+import { createGrassMesh, createGrassLook, createGrassMaterial, scatterBlades } from './vegetation/grass';
 import { generateTree, type TreeSpecies } from '../procgen/trees';
 import { generateBamboo } from '../procgen/bamboo';
 import { setPlantInstanceAttributes } from '../procgen/geometry';
@@ -148,7 +148,7 @@ export async function buildTestScene(engine: Engine, quality: QualityPreset): Pr
     const r = Math.hypot(x, z);
     return r < 15.5 ? 0 : r > 58 ? 0 : 1;
   });
-  scene.add(createGrassMesh(blades, wind, createGrassLook()));
+  scene.add(createGrassMesh(blades, createGrassMaterial(wind, createGrassLook())));
 
   // Sky, sun and shadows.
   const sky = new SkySystem(renderer, scene, camera, 220);

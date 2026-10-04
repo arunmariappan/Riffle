@@ -1,0 +1,18 @@
+{
+  "id": "flat-slab",
+  "name": "Flat slab",
+  "description": "A flat stone slab, good for sitting by the water.",
+  "category": "stones",
+  "generator": {
+    "kind": "rock",
+    "radius": [0.7, 1.2],
+    "flatness": [0.22, 0.38],
+    "roughness": 0.35,
+    "variants": 4,
+    "texture": "rock_face_03",
+    "cluster": 1
+  },
+  "placement": { "surface": "land", "riverDistance": [-1, 8], "maxSlope": 0.5, "spacing": 4, "density": 0.2 },
+  "mossRate": 0.15,
+  "density": 2.6
+}

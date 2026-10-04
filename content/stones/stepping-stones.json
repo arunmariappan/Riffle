@@ -1,0 +1,18 @@
+{
+  "id": "stepping-stones",
+  "name": "Stepping stones",
+  "description": "Flat-topped stones to cross the stream.",
+  "category": "stones",
+  "generator": {
+    "kind": "rock",
+    "radius": [0.35, 0.5],
+    "flatness": [0.45, 0.6],
+    "roughness": 0.35,
+    "variants": 4,
+    "texture": "rock_face_03",
+    "cluster": 1
+  },
+  "placement": { "surface": "bed", "riverDistance": [-8, 0], "maxSlope": 0.5, "spacing": 1.2, "density": 0 },
+  "mossRate": 0.15,
+  "density": 2.6
+}

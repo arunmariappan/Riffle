@@ -1,0 +1,62 @@
+{
+  "id": "tree-rhododendron",
+  "name": "Tree rhododendron",
+  "description": "Gnarled small tree that blazes with red flowers in spring.",
+  "category": "trees",
+  "generator": {
+    "kind": "ez-tree",
+    "preset": "Oak Small",
+    "height": [5, 9],
+    "variants": 3,
+    "bark": "japanese_zelkova_bark",
+    "barkTint": "#c8b8a8",
+    "shape": "round"
+  },
+  "look": {
+    "leafColor": "#2a4820",
+    "spring": {
+      "color": "#c8202e",
+      "mix": 0.62
+    },
+    "premonsoon": {
+      "color": "#2a4820",
+      "mix": 0
+    },
+    "leafAmount": {
+      "winter": 0.95,
+      "spring": 1,
+      "premonsoon": 1,
+      "monsoon": 1,
+      "autumn": 1
+    }
+  },
+  "wind": {
+    "stiffness": 1.3
+  },
+  "placement": {
+    "surface": "land",
+    "riverDistance": [10, 480],
+    "heightAboveBank": [1.5, 320],
+    "maxSlope": 0.5,
+    "wetness": [0.15, 1],
+    "spacing": 4.5,
+    "density": 1.5
+  },
+  "tolerance": {
+    "temperature": {
+      "limits": [-6, 30],
+      "ideal": [5, 22]
+    },
+    "moisture": {
+      "limits": [0.15, 1],
+      "ideal": [0.4, 0.9]
+    }
+  },
+  "growth": {
+    "yearsToMature": 20,
+    "lifespanYears": 120,
+    "spread": "wind-seeds",
+    "spreadRate": 0.2,
+    "spreadDistance": 25
+  }
+}

@@ -23,7 +23,8 @@
     "test:e2e": "playwright test --project=chrome --project=edge",
     "bench": "playwright test --project=bench",
     "assets": "tsx tools/assets.ts",
-    "bake": "tsx tools/bake.ts"
+    "bake": "tsx tools/bake.ts",
+    "fetch-assets": "tsx tools/fetch-assets.ts"
   },
   "dependencies": {
     "@dgreenheck/ez-tree": "^1.1.0",

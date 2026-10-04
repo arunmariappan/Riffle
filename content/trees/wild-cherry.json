@@ -1,0 +1,41 @@
+{
+  "id": "wild-cherry",
+  "name": "Wild cherry",
+  "description": "Clouds of pink blossom in spring; petals drift down the stream.",
+  "category": "trees",
+  "generator": {
+    "kind": "ez-tree",
+    "preset": "Aspen Small",
+    "height": [7, 11],
+    "variants": 3,
+    "bark": "sakura_bark",
+    "barkTint": "#d0c0b8",
+    "shape": "round"
+  },
+  "look": {
+    "leafColor": "#4c7a2c",
+    "spring": { "color": "#f4b4c8", "mix": 0.85 },
+    "autumn": { "color": "#c86a24", "mix": 0.55 },
+    "leafAmount": { "winter": 0.08, "spring": 1, "premonsoon": 1, "monsoon": 1, "autumn": 0.7 }
+  },
+  "wind": { "stiffness": 1 },
+  "placement": {
+    "surface": "land",
+    "riverDistance": [8, 160],
+    "heightAboveBank": [1, 90],
+    "maxSlope": 0.36,
+    "spacing": 7,
+    "density": 0.6
+  },
+  "tolerance": {
+    "temperature": { "limits": [-8, 32], "ideal": [5, 24] },
+    "moisture": { "limits": [0.15, 1], "ideal": [0.3, 0.8] }
+  },
+  "growth": {
+    "yearsToMature": 12,
+    "lifespanYears": 60,
+    "spread": "wind-seeds",
+    "spreadRate": 0.25,
+    "spreadDistance": 35
+  }
+}

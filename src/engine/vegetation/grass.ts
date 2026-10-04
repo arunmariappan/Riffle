@@ -15,7 +15,7 @@ export interface GrassBlade {
 }
 
 /** One blade: a tapered strip with 4 segments, in a unit frame (height 1, width 1). */
-function bladeGeometry(): THREE.BufferGeometry {
+export function bladeGeometry(): THREE.BufferGeometry {
   const segments = 4;
   const positions: number[] = [];
   const uvs: number[] = [];
@@ -51,8 +51,8 @@ export interface GrassLook {
 
 export function createGrassLook(): GrassLook {
   return {
-    baseColor: uniform(new THREE.Color(0x1f3d12)) as any,
-    tipColor: uniform(new THREE.Color(0x6f9a32)) as any,
+    baseColor: uniform(new THREE.Color(0x2a4a14)) as any,
+    tipColor: uniform(new THREE.Color(0x7aa836)) as any,
     dryColor: uniform(new THREE.Color(0x9a8a4a)) as any,
     dryness: uniform(0.1) as any,
   };
@@ -62,11 +62,7 @@ export function createGrassLook(): GrassLook {
  * A field of instanced grass blades (plan 6.4). Blade placement comes from the caller (density from the
  * ecology grid); positions live in instance attributes so the instance matrices stay identity.
  */
-export function createGrassMesh(
-  blades: readonly GrassBlade[],
-  wind: WindUniforms,
-  look: GrassLook,
-): THREE.InstancedMesh {
+export function createGrassMesh(blades: readonly GrassBlade[], material: THREE.Material): THREE.InstancedMesh {
   const geometry = bladeGeometry();
   const a = new Float32Array(blades.length * 4);
   const b = new Float32Array(blades.length * 4);
@@ -77,6 +73,15 @@ export function createGrassMesh(
   geometry.setAttribute('aBlade', new THREE.InstancedBufferAttribute(a, 4));
   geometry.setAttribute('aBladeB', new THREE.InstancedBufferAttribute(b, 4));
 
+  const mesh = new THREE.InstancedMesh(geometry, material, blades.length);
+  mesh.frustumCulled = false;
+  mesh.receiveShadow = true;
+  mesh.castShadow = false;
+  return mesh;
+}
+
+/** Grass material: blade rotation, height, wind and seasonal color from per-instance attributes. Create once, reuse. */
+export function createGrassMaterial(wind: WindUniforms, look: GrassLook): THREE.MeshStandardNodeMaterial {
   const m = new THREE.MeshStandardNodeMaterial({ roughness: 0.85, metalness: 0, side: THREE.DoubleSide });
   const ia = attribute('aBlade', 'vec4');
   const ib = attribute('aBladeB', 'vec4');
@@ -87,17 +92,19 @@ export function createGrassMesh(
   const rotated = vec3(local.x.mul(c).sub(local.z.mul(s)), local.y, local.x.mul(s).add(local.z.mul(c)));
   const worldXZ = vec2(ia.x, ia.z);
   const sway = grassSway(t, worldXZ, ib.y, wind).mul(ia.w);
-  m.positionNode = rotated.add(vec3(ia.x, ia.y, ia.z)).add(sway);
+  // Each blade leans its own way and curves more toward the tip, so the meadow reads soft, not spiky.
+  const lean = t.mul(t).mul(ia.w).mul(ib.z.mul(0.5).add(0.25));
+  const leanVec = vec3(cos(ib.y).mul(lean), lean.mul(lean).mul(-0.5), sin(ib.y).mul(lean));
+  m.positionNode = rotated
+    .add(vec3(ia.x, ia.y, ia.z))
+    .add(sway)
+    .add(leanVec);
   const l: any = look;
   const lush = mix(vec3(l.baseColor), vec3(l.tipColor), t.mul(t));
   const tinted = mix(lush, vec3(l.dryColor), float(l.dryness).mul(ib.z.mul(0.6).add(0.4)));
   m.colorNode = tinted.mul(ib.z.mul(0.35).add(0.8));
 
-  const mesh = new THREE.InstancedMesh(geometry, m, blades.length);
-  mesh.frustumCulled = false;
-  mesh.receiveShadow = true;
-  mesh.castShadow = false;
-  return mesh;
+  return m;
 }
 
 /** Scatters blades over a rectangle using a height function and an optional density (0..1) function. */

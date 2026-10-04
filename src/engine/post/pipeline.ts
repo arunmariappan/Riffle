@@ -112,8 +112,9 @@ export function createPipeline(
       giPass.sliceCount.value = quality === 'ultra' ? 3 : 2;
       giPass.stepCount.value = quality === 'ultra' ? 16 : 8;
       giPass.giIntensity.value = 0.4;
-      const gi = giPass.rgb;
-      const occlusion = giPass.a;
+      // three 0.186: AO and GI live in separate textures (the node itself returns the AO texture).
+      const gi = giPass.getGINode().rgb;
+      const occlusion = giPass.getAONode().r;
       color = vec4(sceneColor.rgb.mul(occlusion).add(sceneDiffuse.rgb.mul(gi)), sceneColor.a);
     }
     color = traa(color, depth, vel, camera);

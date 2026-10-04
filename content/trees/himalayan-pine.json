@@ -1,0 +1,57 @@
+{
+  "id": "himalayan-pine",
+  "name": "Himalayan pine",
+  "description": "Tall blue-green pine of the high slopes.",
+  "category": "trees",
+  "generator": {
+    "kind": "ez-tree",
+    "preset": "Pine Medium",
+    "height": [16, 26],
+    "variants": 3,
+    "bark": "pine_bark",
+    "barkTint": "#d8d0c8",
+    "shape": "cone"
+  },
+  "look": {
+    "leafColor": "#2c4a2c",
+    "winter": {
+      "color": "#24402a",
+      "mix": 0.5
+    },
+    "leafAmount": {
+      "winter": 1,
+      "spring": 1,
+      "premonsoon": 1,
+      "monsoon": 1,
+      "autumn": 1
+    }
+  },
+  "wind": {
+    "stiffness": 1.5
+  },
+  "placement": {
+    "surface": "land",
+    "riverDistance": [24, 900],
+    "heightAboveBank": [10, 700],
+    "maxSlope": 0.5,
+    "spacing": 5,
+    "density": 1.6
+  },
+  "tolerance": {
+    "temperature": {
+      "limits": [-12, 32],
+      "ideal": [0, 22]
+    },
+    "moisture": {
+      "limits": [0.05, 1],
+      "ideal": [0.2, 0.7]
+    }
+  },
+  "growth": {
+    "yearsToMature": 30,
+    "lifespanYears": 200,
+    "spread": "wind-seeds",
+    "spreadRate": 0.15,
+    "spreadDistance": 40
+  }
+}

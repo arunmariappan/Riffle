@@ -111,6 +111,27 @@ export class Engine {
     this.renderer.dispose();
   }
 
+  /**
+   * Resolves once frames come in smoothly (shader compilation finished), or after maxMs. The loading screen stays
+   * up until then, so first-load compilation doesn't show as a frozen valley.
+   */
+  waitForSmoothFrames(count = 12, maxMs = 60000, frameMs = 70): Promise<void> {
+    return new Promise((resolve) => {
+      let good = 0;
+      let last = performance.now();
+      const start = last;
+      const off = this.onLateFrame(() => {
+        const now = performance.now();
+        good = now - last < frameMs ? good + 1 : 0;
+        last = now;
+        if (good >= count || now - start > maxMs) {
+          off();
+          resolve();
+        }
+      });
+    });
+  }
+
   /** Renders one frame immediately (used by tests and photo accumulation). */
   renderNow(): void {
     if (this.pipeline) this.pipeline.render();

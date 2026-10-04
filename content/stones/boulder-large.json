@@ -1,0 +1,18 @@
+{
+  "id": "boulder-large",
+  "name": "Large boulder",
+  "description": "Granite boulder the stream has to flow around.",
+  "category": "stones",
+  "generator": {
+    "kind": "rock",
+    "radius": [1.2, 2.1],
+    "flatness": [0.55, 0.8],
+    "roughness": 0.35,
+    "variants": 4,
+    "texture": "mossy_rock",
+    "cluster": 1
+  },
+  "placement": { "surface": "land", "riverDistance": [-4, 10], "maxSlope": 0.5, "spacing": 7, "density": 0.45 },
+  "mossRate": 0.15,
+  "density": 2.6
+}

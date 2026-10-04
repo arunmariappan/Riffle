@@ -1,0 +1,24 @@
+{
+  "id": "boulder-medium",
+  "name": "Boulder",
+  "description": "A rounded boulder; drop it in the stream to make a riffle.",
+  "category": "stones",
+  "generator": {
+    "kind": "rock",
+    "radius": [0.6, 1.1],
+    "flatness": [0.55, 0.85],
+    "roughness": 0.35,
+    "variants": 4,
+    "texture": "mossy_rock",
+    "cluster": 1
+  },
+  "placement": {
+    "surface": "land",
+    "riverDistance": [-5, 14],
+    "maxSlope": 0.5,
+    "spacing": 3.5,
+    "density": 0.6
+  },
+  "mossRate": 0.15,
+  "density": 2.6
+}

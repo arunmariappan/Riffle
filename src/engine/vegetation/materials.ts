@@ -12,7 +12,7 @@ import {
   color,
   smoothstep,
   hash,
-  instanceIndex,
+  floor,
 } from 'three/tsl';
 import { plantSway, type WindUniforms } from './wind';
 
@@ -38,6 +38,21 @@ export function createFoliageLook(leaf: number, season: number): FoliageLook {
     leafAmount: uniform(1) as any,
     stiffness: uniform(1) as any,
   };
+}
+
+/**
+ * Seasonal leaf color: a share of leaf clusters (about 45 cm) take the season color (blossom, autumn red), the rest
+ * keep the leaf color, so flowers read as clusters among green leaves instead of tinting the whole canopy.
+ */
+function seasonalLeafColor(look: FoliageLook, phase: any): any {
+  const l: any = look;
+  const cell = floor(positionLocal.mul(2.2));
+  const pick = hash(cell.x.add(cell.y.mul(57)).add(cell.z.mul(113)).add(phase.mul(17.3)));
+  const isSeason = pick.lessThan(l.seasonMix);
+  const variation = hash(cell.x.mul(3.1).add(cell.z.mul(7.7)).add(phase))
+    .mul(0.22)
+    .add(0.88);
+  return isSeason.select(vec3(l.seasonColor), vec3(l.leafColor)).mul(variation);
 }
 
 function swayNode(wind: WindUniforms, isLeaf: number, stiffness: any): any {
@@ -71,10 +86,7 @@ export function createLeafCardMaterial(
 ): THREE.MeshStandardNodeMaterial {
   const m = new THREE.MeshStandardNodeMaterial({ roughness: 0.75, metalness: 0, side: THREE.DoubleSide });
   const l: any = look;
-  const variation = hash(instanceIndex.toFloat().add(attribute('aInst', 'vec4').z.mul(97)))
-    .mul(0.25)
-    .add(0.88);
-  const base = mix(vec3(l.leafColor), vec3(l.seasonColor), l.seasonMix).mul(variation);
+  const base = seasonalLeafColor(look, attribute('aInst', 'vec4').z);
   const sample = leafMap ? texture(leafMap, uv()) : null;
   // The leaf texture provides shape (alpha) and detail; its luminance modulates our seasonal color.
   const detail = sample
@@ -109,7 +121,7 @@ export function createPolyLeafMaterial(wind: WindUniforms, look: FoliageLook): T
   const m = new THREE.MeshStandardNodeMaterial({ roughness: 0.6, metalness: 0, side: THREE.DoubleSide });
   const l: any = look;
   const tint = attribute('aTint', 'float');
-  const base = mix(vec3(l.leafColor), vec3(l.seasonColor), l.seasonMix);
+  const base = seasonalLeafColor(look, attribute('aInst', 'vec4').z);
   const midrib = smoothstep(0.0, 0.12, uv().x.sub(0.5).abs());
   m.colorNode = base.mul(tint.mul(0.3).add(0.8)).mul(midrib.mul(0.15).add(0.85));
   const keep = hash(positionLocal.mul(11.3)).lessThan(l.leafAmount).select(float(1), float(0));
