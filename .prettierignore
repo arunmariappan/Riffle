@@ -1,0 +1,10 @@
+pnpm-lock.yaml
+pnpm-workspace.yaml
+dist
+public/assets
+assets-src
+coverage
+test-results
+playwright-report
+bench-results
+*.md

@@ -1,0 +1,23 @@
+# Dependencies and builds
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# Built from assets-src/ and seeds by `pnpm assets` and `pnpm bake` (plan D29)
+public/assets/
+
+# Test and benchmark output
+test-results/
+playwright-report/
+blob-report/
+coverage/
+bench-results/
+tests/e2e/__screenshots__/actual/
+
+# Logs and local files
+*.log
+.env
+.env.*
+.DS_Store
+Thumbs.db

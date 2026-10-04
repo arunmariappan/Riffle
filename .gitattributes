@@ -1,0 +1,28 @@
+# Keep LF everywhere (this machine's Git converts to CRLF on checkout, which would fail Prettier's check).
+* text=auto eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ktx2 binary
+*.glb binary
+*.bin binary
+*.hdr binary
+*.exr binary
+*.wav binary
+*.ogg binary
+*.mp3 binary
+*.mp4 binary
+
+# Hand-picked CC0 source assets live in Git LFS (plan D29). Generated and processed files are gitignored.
+assets-src/**/*.png filter=lfs diff=lfs merge=lfs -text
+assets-src/**/*.jpg filter=lfs diff=lfs merge=lfs -text
+assets-src/**/*.jpeg filter=lfs diff=lfs merge=lfs -text
+assets-src/**/*.webp filter=lfs diff=lfs merge=lfs -text
+assets-src/**/*.exr filter=lfs diff=lfs merge=lfs -text
+assets-src/**/*.hdr filter=lfs diff=lfs merge=lfs -text
+assets-src/**/*.glb filter=lfs diff=lfs merge=lfs -text
+assets-src/**/*.wav filter=lfs diff=lfs merge=lfs -text
+assets-src/**/*.ogg filter=lfs diff=lfs merge=lfs -text
