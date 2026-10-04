@@ -12,7 +12,9 @@ to feed.*
 Written 2026-10-04. Rewritten the same day for **browser only** (replacing an earlier Unreal Engine plan) and updated
 with your answers: 1080p at 60 Hz, an invented valley that is as vibrant and natural as possible, colorful and
 elegant fish (the monsoon mountain stream theme), no access from other devices, free assets only, and the codename
-Riffle. The plan lives in the repo at `docs/plan.md`. Status: **plan only, nothing built yet.** Decisions marked *(your choice)* came from your answers. The rest
+Riffle. Reviewed before Phase 0 on the same day; the fixes (flow model, physics resolution, shared buffers, repo
+setup, GPU bakes, early fish and milestones) are applied. The plan lives in the repo at `docs/plan.md`. Status:
+**plan only, nothing built yet.** Decisions marked *(your choice)* came from your answers. The rest
 are recommendations you can change here.
 
 **Contents:**
@@ -55,13 +57,14 @@ are recommendations you can change here.
 | Audio | **Web Audio API** (HRTF panners, AudioWorklet) via three.js `AudioListener` / `PositionalAudio` | Built into the browser, with 3D (spatial) sound. |
 | Video export | **WebCodecs + Mediabunny** (MPL-2.0) | Time-lapses are encoded to MP4 in the browser, using your GPU's hardware encoder, and written straight to disk. |
 | Saving | **OPFS** (the browser's private file system) + **File System Access API** | Autosave inside the browser, plus "Save valley as…" / "Open valley…" `.riffle` files on your disk. |
-| Assets | **Free only** *(your choice)*: Poly Haven and ambientCG (CC0), freesound.org (CC0 preferred), generated content. **glTF (.glb) + KTX2**, prepared with **glTF-Transform** | Compressed meshes (meshopt) and GPU-compressed textures load fast and use less video memory. Everything is free to redistribute, so it all lives in the repo (Git LFS). |
+| Assets | **Free only** *(your choice)*: Poly Haven and ambientCG (CC0), freesound.org (CC0 preferred), generated content. **glTF (.glb) + KTX2**, prepared with **glTF-Transform** | Compressed meshes (meshopt) and GPU-compressed textures load fast and use less video memory. Only the hand-picked CC0 source files are committed (Git LFS, a few hundred MB of the free 10 GB). Everything processed or generated is rebuilt locally by `pnpm assets` and `pnpm bake` and never committed ([7](#7-content-catalog-and-adding-new-things)). |
 | Build | **Node.js 24 LTS, pnpm, Vite** | Vite's dev server reloads instantly on save and sends the headers SharedArrayBuffer needs. |
 | Quality | **ESLint (typescript-eslint) + Prettier** | A lint rule stops `src/sim/` from importing three.js, so the simulation cores stay pure and testable. |
 | Tests | **Vitest** (unit) + **Playwright** (end-to-end, screenshots, benchmark) | Playwright drives real Chrome and Edge on your GPU. |
 | Dev tools | Tweakpane (debug panel, dev builds only), stats-gl, Chrome DevTools, WebGPU timestamp queries | Tuning and profiling. |
 | Hosting | **Local only, this PC only** *(your choice)* | `pnpm dev` while building, `pnpm start` for the optimized build, opened at `http://localhost`. |
 | Source control | Git + Git LFS, public GitHub repo [`arunmariappan/Riffle`](https://github.com/arunmariappan/Riffle), GitHub Actions | CI checks types, lint and unit tests, and builds. End-to-end tests run locally because CI machines have no GPU. |
+| License | **MIT** *(your choice)* | The same license as three.js and EZ-Tree. `LICENSE` is in the repo root. |
 
 ---
 
@@ -84,7 +87,7 @@ are recommendations you can change here.
 | D13 | Lighting | **Dynamic sun + physically based sky + image-based lighting from the sky + cascaded shadows + GTAO + SSGI + SSR + TRAA, AgX tone mapping** | The browser has no Lumen-style global illumination, so this combination comes closest. Photo mode adds frame accumulation for clean, near-photographic stills ([6.10](#610-photo-mode-and-time-lapse)). |
 | D14 | Water | **Our own flow-field solver in a worker + our own river mesh and water material** | Owning the water makes the water level easy: the surface really rises and falls with the flow ([6.2](#62-water-and-flow)). |
 | D15 | Wind | **Our own wind system → shader uniforms + a wind texture** | Trees, bamboo, grass, water ripples, particles, audio and seed spread all read one wind state. |
-| D16 | Vegetation | **EZ-Tree + our own bamboo, tree fern and water-plant generators + compute-generated grass + our own rule-based scatter system** | Far trees become impostors baked by our own tool. |
+| D16 | Vegetation | **EZ-Tree + our own bamboo, tree fern and water-plant generators + compute-generated grass + our own rule-based scatter system** | Far trees become impostors baked in the Workshop page (D31). |
 | D17 | Physics | **Rapier** | Stones settle with physics, then freeze into flow obstacles. Kinematic character controller for walking. |
 | D18 | Fish simulation | **CPU agents in a worker + instanced meshes animated in the shader** | Fish agents are reproducible and testable, and the ecology needs them. Big minnow and danio schools can optionally run fully on the GPU. |
 | D19 | Ecosystem simulation | **Two levels: the whole valley as coarse grids and population groups; individual fish only near the camera** | Runs in a worker. Results are reproducible: the same seed gives the same valley. |
@@ -96,6 +99,10 @@ are recommendations you can change here.
 | D25 | Assets | **Free only** *(your choice)* | CC0 textures and sounds plus generated content. CC-BY items, if any, are listed in `CREDITS.md`. |
 | D26 | AI / LLM | **None** | Not selected; all of the video memory goes to the renderer. |
 | D27 | Name and location | **Riffle** *(your choice)*, in **`D:\ai_workspace\Riffle`** | A public repo at [github.com/arunmariappan/Riffle](https://github.com/arunmariappan/Riffle), cloned 2026-10-04. The repo-local noreply identity is set. Public is fine because every asset is free (CC0, or CC-BY listed in `CREDITS.md`). |
+| D28 | License | **MIT** *(your choice)* | Anyone may reuse the code if they keep the notice. Asset credits stay in `CREDITS.md`. |
+| D29 | Large files | **Git LFS for hand-picked CC0 sources; generated and processed files rebuilt locally** *(your choice)* | `assets-src/` (LFS) is committed. `public/assets/` is built by `pnpm assets` and `pnpm bake` and gitignored, so re-baking trees or terrain never uses LFS quota. |
+| D30 | Milestones and early fish | **4 milestones, and a first fish school in Phase 2** *(your choice)* | Walk by the stream → Shape it → Alive → Senses ([10](#10-phases)). A school of Denison barbs swims in the living water from Phase 2. Phase 5 adds the full look, all six species and every behavior. |
+| D31 | GPU bakes | **A dev-only Workshop page in the browser, driven by `pnpm bake`** | Node has no WebGPU, so the jobs that need the GPU (terrain erosion, tree impostors, thumbnails) run in Chrome. Playwright opens the Workshop page, and a small dev-only Vite plugin writes the results to disk. |
 
 ### Goals
 
@@ -215,9 +222,12 @@ flowchart LR
 
 1. **The simulation cores are pure TypeScript** in `src/sim/`: flow solver, wind field, ecology, genetics, boids,
    time and weather. They import nothing from three.js or the DOM (enforced by a lint rule). That makes them
-   unit-testable in Node, reproducible (seeded random numbers) and runnable in workers.
+   unit-testable in Node, runnable in workers and **reproducible: the same seed and the same inputs give the same
+   result** (seeded random numbers, fixed simulation steps).
 2. **Workers own the simulation, the main thread renders.** Commands go to the workers through Comlink. Big results
-   (flow field, fish states, density grids) come back through SharedArrayBuffers, with no copying.
+   (flow field, fish states, density grids) come back through SharedArrayBuffers, with no copying. Each shared result
+   is **double-buffered with a version number**: the writer fills the back buffer and then bumps the version, so
+   readers (the main thread and the other workers) never see a half-written result.
 3. **React shows state, it doesn't run the world.** The engine publishes snapshots to Zustand at about 10 Hz for the
    HUD and graphs. The UI sends commands ("place stone", "set wind speed"). React never re-renders every frame.
 4. **Data-driven content.** Species and objects are JSON files checked against Zod schemas when they load, so adding
@@ -227,7 +237,8 @@ flowchart LR
    look.
 6. **Cross-origin isolation:** the Vite dev and preview servers send the `Cross-Origin-Opener-Policy: same-origin` and
    `Cross-Origin-Embedder-Policy: require-corp` headers, which SharedArrayBuffer requires. This is easy because the
-   app is local only.
+   app is local only. These headers also block files from other sites, so **everything is bundled locally**,
+   including fonts (no Google Fonts or CDNs).
 
 ### Update rates
 
@@ -248,7 +259,7 @@ flowchart LR
 ```
 Riffle/
   package.json  pnpm-lock.yaml  tsconfig.json  vite.config.ts  eslint.config.js  playwright.config.ts
-  index.html  CREDITS.md
+  index.html  workshop.html  README.md  LICENSE  CREDITS.md  .gitattributes  .gitignore
   src/
     main.tsx               App entry: WebGPU check → start screen → engine + UI
     app/                   React UI: layout, catalog, panels, overlays, HUD, graphs
@@ -264,13 +275,19 @@ Riffle/
     photo/                 Photo mode, accumulation, capture, time-lapse encoder
     save/                  OPFS autosave, .riffle files, versioned format
     content/               Zod schemas, catalog loader
+    workshop/              Dev-only Workshop page: GPU bakes (terrain erosion, tree impostors, thumbnails)
   content/                 Species and object JSON (fish/, plants/, stones/, trees/, bushes/)
-  public/assets/           CC0 textures, rocks, sounds; baked terrain and trees (.glb / .ktx2, Git LFS)
-  tools/                   TS scripts: terrain generation + erosion, asset pipeline, tree/impostor baking, thumbnails
+  assets-src/              Hand-picked CC0 originals: textures, rocks, sounds (Git LFS, committed)
+  public/assets/           Built by `pnpm assets` + `pnpm bake`: KTX2 textures, terrain, trees, impostors,
+                           thumbnails (gitignored, rebuilt from assets-src/ and seeds)
+  tools/                   Node TS scripts: asset processing (glTF-Transform, KTX2), the bake runner,
+                           the dev-only Vite plugin that writes bake results
   tests/
     unit/                  Vitest (mostly src/sim and src/procgen)
     e2e/                   Playwright (flows, screenshots, benchmark)
-  docs/                    plan.md (this plan)
+  docs/
+    plan.md                This plan
+    phases/                One task file per phase, written when the phase starts
 ```
 
 ---
@@ -279,16 +296,18 @@ Riffle/
 
 ### 6.1 Valley and mountains
 
-- **Invented valley, generated** (`tools/terrain/` using `src/sim/terrain/`): layered noise is shaped by a hand-drawn
-  valley mask and the stream's course, then **hydraulic and thermal erosion** run on the GPU. Slopes, gullies, scree
+- **Invented valley, generated** (`src/sim/terrain/`, run on the GPU by the Workshop page through `pnpm bake`):
+  layered noise is shaped by a hand-drawn valley mask and the stream's course, then **hydraulic and thermal erosion**
+  run on the GPU. Slopes, gullies, scree
   fans and the stream channel look carved by water over a long time. The generator outputs a 4096² height map
   (about 0.25 m per sample) plus masks (flow accumulation, sediment, wetness) that the terrain material and the
   scatter rules use. The same seed always gives the same valley, so it can be tuned until it looks just right.
 - **Shape:** steep, layered forested ridges fading into blue haze (Himalayan foothills and Western Ghats), mossy
   granite boulders along the stream, and snow on the highest distant peaks in winter.
 - **Drawing it:** **level-of-detail patches** (64 × 64 vertex tiles chosen by a quadtree, CDLOD) read the heights in
-  the vertex shader (TSL) and blend smoothly between detail levels. A CPU copy of the heights serves physics (a Rapier
-  heightfield) and fast placement raycasts.
+  the vertex shader (TSL) and blend smoothly between detail levels. A full-resolution CPU copy of the heights serves
+  fast placement raycasts. **Physics gets a 1 m version** (a 1024² Rapier heightfield): the full 4096² grid (16.7
+  million cells) would be too heavy, and boulders have their own colliders anyway.
 - **Distant mountains:** a low-detail ring out to 10–20 km, softened by the atmosphere's aerial perspective.
 - **Terrain material:** layers chosen automatically by slope, height, wetness and the erosion masks (red-brown soil,
   leaf litter, moss, river sand, gravel, granite, snow), with **triplanar mapping on cliffs** (no stretched textures),
@@ -303,13 +322,22 @@ Riffle/
 
 - A world-aligned grid at 0.5 m per cell (2048 × 2048). Only **wet cells** are simulated, kept in a sparse list (about
   100k cells).
-- **Method:** a steady 2D depth-averaged potential-flow solve on a *stream function* ψ, weighted by local depth
-  (∇·(1/h ∇ψ) = 0, one bank at ψ = 0 and the other at ψ = Q, where Q is the discharge). **Stones are bumps in the
-  stream bed**, so the flow goes around them and speeds up over shallows naturally. The solve uses successive
-  over-relaxation (SOR), starting from the last result, so a re-solve after one edit takes milliseconds to tens of
-  milliseconds in the worker.
+- **Order of work:** (1) water level per cross-section, (2) wet cells and depths, (3) the stream-function solve,
+  (4) velocities, wakes and foam.
 - **Depth and level:** each cross-section's water depth comes from Manning's relation (depth ∝ Q^0.6), so raising the
-  discharge really raises the water.
+  discharge really raises the water. The waterfall splits the stream into separate stretches (reaches), each solved
+  on its own. The pond is a side basin at the level of the stream next to it.
+- **Method: friction-dominated flow on a *stream function* ψ, weighted by conveyance.** Solve
+  ∇·(1/K ∇ψ) = 0 with **K = h^5/3 / n** (h = depth, n = Manning roughness). Like a real stream, the water runs
+  **fast in the deep channel and slow at the shallow edges**, and it routes around stones and shallows. Weighting by
+  plain depth (1/h) would give nearly uniform speed across the stream, with edges far too fast.
+- **Boundaries:** one bank at ψ = 0, the other at ψ = Q (the reach's discharge). A side brook from the spring tool adds
+  its inflow as a step in ψ along its bank. **Stones are raised stream bed.** Depth is clamped to a minimum of about
+  2 cm, so a boulder sticking out of the water behaves as an almost-dry island that the flow goes around.
+- **Fast convergence:** the first estimate comes from each cross-section's discharge spread (unit discharge
+  ∝ h^5/3), which is already close to the answer. Successive over-relaxation (SOR) then only corrects around obstacles,
+  and after an edit only the nearby region is re-solved. Fallback if that's still too slow: a multigrid solver.
+  Target: < 100 ms for a re-solve after one edit, < 1 s for a full solve at startup.
 - **Wakes and eddies:** added behind obstacles in proportion to obstacle size × local speed: slower water, more
   turbulence, a swirl added in the material. Fish shelter there.
 - **Output:** a shared `Float32Array` (velocity, foam/turbulence, depth, surface height). The main thread uploads it
@@ -361,7 +389,8 @@ Riffle/
 
 - **Trees:** EZ-Tree presets for **tree rhododendron** (red and pink blooms), **Japanese maple** (red in autumn),
   **wild cherry** (blossom) and **Himalayan pine** (high slopes). Each species gets several seeded variations, baked by
-  `tools/` into .glb files with 3 detail levels plus an **octahedral impostor** (a flat stand-in for far trees).
+  the Workshop page (`pnpm bake`) into .glb files with 3 detail levels plus an **octahedral impostor** (a flat
+  stand-in for far trees).
 - **Our own generators (`src/procgen/`):** **bamboo** (jointed culms, nodes, leaf sprays, growing as clumps that
   spread), **tree ferns** (a fibrous trunk with a crown of arching fronds) and **water plants**.
 - **Ground cover:** ferns, a moss carpet, **wild orchids** growing on trunks and rocks, grasses and wildflowers. Grass
@@ -423,6 +452,10 @@ Riffle/
   return; curious fish come closer when you stand still.
 - **Night:** resting near the bottom.
 
+**When:** a first school of Denison barbs (torpedo body, stripe pattern, simple schooling, holding against the current)
+swims in the living water from **Phase 2**. **Phase 5** adds the full look (fins, iridescence, metallic scales), all six
+species and every behavior.
+
 **Simulation and drawing:** a spatial hash and typed arrays at 30 Hz, for 300–800 individual fish near the camera.
 Their states go into a SharedArrayBuffer that the main thread blends into the instance data each frame. One
 `InstancedMesh` per body template, with per-instance pattern and gene values. Optionally, big minnow and danio
@@ -477,6 +510,10 @@ quality, average color brightness over time), overlays (flow arrows, oxygen, lig
 **Safety nets:** carrying capacities, an optional floor of minimum seed stock, and a test that the default valley stays
 balanced for 10 simulated years.
 
+**What "reproducible" means here:** the same seed and the same inputs give the same valley. The test runs the
+population-level (cohort) simulation in fixed simulation steps, with no player and no individual fish near a camera.
+Your actions (placing things, throwing food) are inputs, so a live session with you in it isn't expected to repeat.
+
 ### 6.7 Time, sky and weather
 
 - **Sky:** a physically based atmosphere (the Hillaire 2020 method: small lookup tables computed by TSL compute
@@ -503,7 +540,7 @@ balanced for 10 simulated years.
 ### 6.8 Builder: drag and drop and controls
 
 - **Catalog panel (left, React):** tabs for **Fish · Water plants · Stones · Trees · Bushes & ground**, with
-  thumbnails rendered by a dev-only tools page.
+  thumbnails rendered by the Workshop page (`pnpm bake`).
 - **Drag and drop:** a **pointer-event drag session** rather than HTML5 drag and drop, which tracks poorly over a 3D
   canvas. You press on a card, then:
   - A **ghost preview** follows the cursor over the 3D view, placed by a raycast against the terrain heights, the water
@@ -600,9 +637,15 @@ also accepted if you want a shape the templates can't make.
   and all fish.
 - **Poly Haven and ambientCG (CC0):** rocks, ground, bark and leaf textures, plus HDRIs for lighting checks.
 - **freesound.org:** sounds, preferring CC0; any CC-BY sound is listed in `CREDITS.md`.
-- **Pipeline:** `pnpm assets` runs `tools/assets.ts` (glTF-Transform). It merges duplicates, builds detail levels with
-  the meshopt simplifier, compresses meshes with meshopt and textures to KTX2. It needs the KTX-Software command-line
-  tool installed.
+- **Storage (D29):** the hand-picked CC0 originals live in `assets-src/` (Git LFS, committed). Everything built from
+  them or from seeds goes to `public/assets/` (gitignored), so it never uses LFS quota.
+- **`pnpm assets`** (Node, `tools/assets.ts` with glTF-Transform) processes `assets-src/`: merges duplicates, builds
+  detail levels with the meshopt simplifier, compresses meshes with meshopt and textures to KTX2. It needs the
+  KTX-Software command-line tool installed.
+- **`pnpm bake`** (D31) runs the jobs that need the GPU: Playwright opens the dev-only Workshop page in Chrome, which
+  generates and erodes the terrain, bakes trees with their detail levels and impostors, and renders catalog
+  thumbnails. A small dev-only Vite plugin writes the results into `public/assets/`. The same seeds always give the same
+  files.
 
 ---
 
@@ -669,6 +712,18 @@ with the last run.
 Sizes are relative to each other: **S** small, **M** medium, **L** large, **XL** the biggest and most open-ended.
 Each phase ends with its "Done when" checks passing and a short "what was built" note added to the phase.
 
+**Per-phase task files:** when a phase starts, its tasks are broken down into `docs/phases/phase-N.md` (steps, files,
+tests), as PaperPilot did. This plan stays the design. The task file is the checklist.
+
+**Milestones (D30):** each one ends with something you can enjoy, not just infrastructure.
+
+| Milestone | Phases | What you can do at the end |
+|---|---|---|
+| **M1 — Walk by the stream** | 0, 1, 2 | Walk the valley, wade and swim in living water, watch a school of Denison barbs hold in the current |
+| **M2 — Shape it** | 3, 4 | Wind in the bamboo and trees; drag in stones, plants and trees and change the water, wind and tree movement |
+| **M3 — Alive** | 5, 6 | All six colorful fish; the valley grows, breeds and evolves through the seasons |
+| **M4 — Senses** | 7, 8, 9 | 3D nature sound, photo mode and time-lapses, polish |
+
 ### Phase 0 — Groundwork and hardware check (S)
 
 1. **Stability check (first):** install HWiNFO64 and log GPU edge and hotspot temperature, GPU power and CPU
@@ -679,20 +734,28 @@ Each phase ends with its "Done when" checks passing and a short "what was built"
 2. Tools: Node.js 24 LTS, pnpm, VS Code (ESLint, Prettier and Vitest extensions), Chrome and Edge up to date,
    Git LFS, KTX-Software.
 3. Scaffold: Vite + React 19 + TypeScript (strict) + three.js (pinned) + ESLint/Prettier + Vitest + Playwright. COOP and
-   COEP headers in `vite.config.ts`. The WebGPU check and the "please use Chrome or Edge" page. `.gitignore` and LFS
-   `.gitattributes` in the existing repo (cloned 2026-10-04, repo-local noreply identity already set), and a GitHub
-   Actions workflow (typecheck, lint, unit tests, build).
+   COEP headers in `vite.config.ts`. Fonts bundled locally. The WebGPU check and the "please use Chrome or Edge" page.
+   In the existing repo (cloned 2026-10-04, repo-local noreply identity set, MIT `LICENSE` added): `.gitattributes`
+   with `* text=auto eol=lf` (your Git converts to Windows line endings on checkout, which would fail Prettier's check)
+   plus LFS patterns for `assets-src/`; `.gitignore` including `public/assets/`; a README; a GitHub Actions workflow
+   (typecheck, lint, unit tests, build).
 4. **Rendering test scene (a 200 m patch):** noise terrain, a flat water plane with refraction and SSR, 3 EZ-Tree
    trees with a basic wind shader, one bamboo clump, compute grass, cascaded shadows, and the GTAO + SSGI + TRAA
    chain. Measure each pass at 1080p with timestamp queries.
+5. **Flow solver prototype (pure TypeScript, in Node):** a test channel 200 m long with a pool, a riffle and three
+   stones, solved with the conveyance-weighted method ([6.2](#62-water-and-flow)). This proves the riskiest piece of
+   maths before anything is built on it.
 
 **Done when:** the stress test runs 30 minutes with no shutdown; the test scene runs at 60 fps at 1080p on the High
-preset (≥ 45 fps at worst); the starting settings for each quality preset are recorded; one unit test and one
-Playwright test pass; CI is green.
+preset (≥ 45 fps at worst); the starting settings for each quality preset are recorded; the flow prototype is fast in
+the deep channel and slow at the edges, routes around the stones and re-solves after moving a stone in < 100 ms; one
+unit test passes, and one Playwright test opens Chrome and Edge and **reads back a rendered WebGPU frame**; CI is
+green.
 
 ### Phase 1 — The valley (L)
 
-The terrain generator with erosion and the invented valley (tuned against the reference photos), the carved stream
+The Workshop page and `pnpm bake`, the terrain generator with erosion and the invented valley (tuned against the
+reference photos, which are collected at the start of this phase), the carved stream
 channel, terrain with LOD patches, the terrain material, the distant ridges, the physically based sky with aerial
 perspective, sun/moon/stars and time of day, lighting from the sky, clouds and cloud shadows, fog and mist, the Rapier
 character and Explore camera (walking), and a first scatter pass (forest, slopes, boulders).
@@ -705,17 +768,20 @@ valley without hitches.
 
 The flow solver in its worker and the shared flow texture, the river mesh following the solved surface height, the
 pond and the waterfall, the water material (flow-map scrolling, turquoise color by depth, refraction, reflections,
-foam), caustics, underwater, swimming and wading forces, floating debris particles, and the **water speed and level**
-controls (in the dev panel for now; real UI in Phase 4).
+foam), caustics, underwater, swimming and wading forces, floating debris particles, the **water speed and level**
+controls (in the dev panel for now; real UI in Phase 4), and **the first fish**: a school of Denison barbs from a
+first version of the fish generator (torpedo body, stripe pattern, swim shader) and the fish worker (schooling,
+holding against the current, sheltering behind stones).
 
-**Done when:** solver tests pass (flow is conserved, flow goes around and speeds past a stone, scaling the discharge
-scales the speed and the depth, a re-solve after one edit takes < 100 ms); a debug rock brings foam and a wake within
-0.5 s; raising the discharge visibly raises the water; swimming and wading feel right; the budget holds.
+**Done when:** solver tests pass (flow is conserved, fast in the deep channel and slow at the edges, goes around
+stones, scaling the discharge scales the speed and the depth, a re-solve after one edit takes < 100 ms); a debug rock
+brings foam and a wake within 0.5 s; raising the discharge visibly raises the water; swimming and wading feel right;
+the barb school holds in the current and gathers behind a dropped stone; the budget holds.
 
 ### Phase 3 — Wind and vegetation (L)
 
 The wind system with gust fronts; EZ-Tree presets with wind attributes; the bamboo, tree fern and water-plant
-generators; the tree baking tool (detail levels + impostors); the **tree dynamics** settings; grass reacting to wind
+generators; tree baking in the Workshop (detail levels + impostors); the **tree dynamics** settings; grass reacting to wind
 and the player; water plants bending with the flow; falling petals, leaves and pollen; instanced stones with moss;
 the full scatter rules; and the season looks.
 
@@ -736,8 +802,8 @@ and from a file; every slider changes the world live; Playwright covers dragging
 
 ### Phase 5 — Fish (L)
 
-The fish generator (body templates, fins, pattern shader with metallic scales and iridescence, the graceful swim
-motion), the six species' JSON files, the fish worker (schooling, holding against the current, sheltering, loaches
+Building on the Phase 2 barb school: the full fish generator (all body templates, fins, pattern shader with metallic
+scales and iridescence, the graceful swim motion), the six species' JSON files, the full fish worker (loaches
 clinging in the rapids, depth and temperature preferences, feeding and throwing food, fleeing, resting at night),
 dropping a school into the water, inspect/follow, and optionally GPU minnow and danio schools.
 
@@ -752,10 +818,11 @@ water), plant growth and spread with re-scattering, the fish life cycle and coho
 mahseer's monsoon migration, the food chain and the optional kingfisher, genetics (breeder's equation, the two pulls
 on color, koi pattern mixing), the Ecosystem panel with graphs, and saving the ecology state.
 
-**Done when:** the same seed gives the same result (a reproducibility test); a sped-up 10-year run of the default
-valley stays balanced, with no runaway populations or extinctions; two **adaptation experiments** pass: in a
-fast-flow valley the average swim strength rises over N generations (and in a slow valley it doesn't), and with low
-predator pressure the average color brightness rises; individual fish hand off to cohorts and back without visible
+**Done when:** the same seed and inputs give the same result (a reproducibility test, as defined in
+[6.6](#66-ecosystem-and-evolution)); a sped-up 10-year run of the default valley stays balanced, with no runaway
+populations or extinctions; two **adaptation experiments** pass: in a fast-flow valley the average swim strength
+rises over 20 generations (and in a slow valley it doesn't), and with low predator pressure the average color
+brightness rises over 20 generations; individual fish hand off to cohorts and back without visible
 popping.
 
 ### Phase 7 — Spatial nature audio (M)
@@ -784,8 +851,8 @@ handling of a lost GPU device (an "oops, reloading" message that restores from t
 window and desktop shortcut), a README and controls guide, and a fresh-clone test.
 
 **Done when:** an hour-long session runs without crashes or memory growth (once the hardware check has passed); every
-earlier phase's checks still pass; the README is enough to set up the project from a fresh clone (clone →
-`pnpm install` → `pnpm assets` → `pnpm start`).
+earlier phase's checks still pass; the README is enough to set up the project from a fresh clone (clone, which pulls
+`assets-src/` through LFS → `pnpm install` → `pnpm assets` → `pnpm bake` → `pnpm start`).
 
 ---
 
@@ -793,14 +860,15 @@ earlier phase's checks still pass; the README is enough to set up the project fr
 
 | Kind | What | How |
 |---|---|---|
-| Unit (Vitest, in Node) | Flow solver (conservation, obstacles, scaling, depth, warm-start speed), terrain generator (same seed gives the same valley, erosion keeps heights in range), wind gusts, time and season math, scatter rules (same seed gives the same layout), ecology tolerance and growth, carrying capacity, genetics (inheritance and mutation limits, breeder's equation, color pulls), boids (no NaNs, fish stay in water), the generators (valid meshes within vertex budgets, gene values map to bounded shader values), placement rules, undo/redo, save format round-trip and older-version loading, Zod content validation of every JSON file | `src/sim` and most of `src/procgen` run in Node, fast, with no browser |
+| Unit (Vitest, in Node) | Flow solver (conservation, fast in the deep channel and slow at the edges, routing around stones, scaling, depth, re-solve speed), terrain generator (same seed gives the same valley, erosion keeps heights in range), wind gusts, time and season math, scatter rules (same seed gives the same layout), ecology tolerance and growth, carrying capacity, genetics (inheritance and mutation limits, breeder's equation, color pulls), boids (no NaNs, fish stay in water), the generators (valid meshes within vertex budgets, gene values map to bounded shader values), placement rules, undo/redo, save format round-trip and older-version loading, Zod content validation of every JSON file | `src/sim` and most of `src/procgen` run in Node, fast, with no browser |
 | End-to-end (Playwright, real Chrome and Edge on your GPU) | App starts and shows the start screen; the non-WebGPU page; drag a stone in → foam appears in that area (reading the shared flow buffer); move the wind slider → the wind state changes; save → reload → same valley | `pnpm test:e2e` |
-| Reproducibility | A seeded 1-year ecology run gives the same final state every time | Hash compared with a stored value |
+| Reproducibility | A seeded 1-year cohort-level ecology run (fixed steps, no player, no near-camera fish) gives the same final state every time | Hash compared with a stored value |
+| Shared buffers | Readers never see a half-written result (writer and reader racing on purpose in a stress test) | Vitest with real worker threads |
 | Visual (golden shots) | Fixed spots × times in **test mode** (`?test=1&seed=42&time=08:00&freeze=1`: wind, water and temporal effects frozen) | Playwright screenshots compared with a tolerance; also reviewed by eye against reference photos each phase. Local only, because results depend on the GPU |
 | Performance | The benchmark flythrough | `pnpm bench` writes JSON and fails if a budget is broken |
 
 **Commands:** `pnpm typecheck` · `pnpm lint` · `pnpm test` · `pnpm test:e2e` · `pnpm bench` · `pnpm dev` ·
-`pnpm build` · `pnpm start` · `pnpm assets` · `pnpm terrain`.
+`pnpm build` · `pnpm start` · `pnpm assets` · `pnpm bake`.
 
 **CI (GitHub Actions):** typecheck, lint, unit tests and build on every push. End-to-end, visual and benchmark tests
 run locally before pushing, because CI machines have no GPU.
@@ -812,6 +880,8 @@ run locally before pushing, because CI machines have no GPU.
 | Risk | Likelihood | Impact | What reduces it |
 |---|---|---|---|
 | The PC shuts down under sustained GPU load | **High** (3 times on 2026-10-04) | Lost work, hardware damage | Phase 0 stability check first; 60 fps cap; power limit; autosave; frequent commits |
+| The flow solver is too slow or looks wrong | Medium | Water, fish, plants and sound all depend on it | Proven early by the Phase 0 prototype; conveyance weighting; a good first estimate from cross-sections; multigrid as a fallback |
+| LFS quota (10 GB free) runs out | Low | Pushes blocked | Only the CC0 sources are in LFS; everything generated or processed is gitignored and rebuilt |
 | The browser's realism ceiling | Certain | The live view looks less real than a high-end desktop engine | The right lighting chain, careful art direction, golden shots against real photos; photo-mode accumulation for stills |
 | Generated fish and plants look artificial | Medium | Misses "colorful and elegant" | Side-by-side checks with reference photos in Phases 3 and 5; templates and patterns tuned per species; fin motion and iridescence are the priority |
 | "Vibrant" turns into oversaturated | Medium | Looks fake | Color comes from content and light; grading limits checked against reference photos |
@@ -837,6 +907,10 @@ Answered on 2026-10-04. Nothing is open right now; new questions go here.
 | Use it from other devices on the network | No | D5, non-goals |
 | Asset budget | Free assets only | D25, [7](#7-content-catalog-and-adding-new-things) |
 | Codename | **Riffle** | D27 |
+| Repo visibility | Public (fine with free assets) | D27 |
+| License | MIT | D28, `LICENSE` |
+| Large files | LFS for CC0 sources; generated files rebuilt locally | D29, [7](#7-content-catalog-and-adding-new-things) |
+| Fish timing | A first barb school in Phase 2, plus 4 milestones | D30, [10](#10-phases) |
 
 ---
 
