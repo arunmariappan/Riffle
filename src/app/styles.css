@@ -190,3 +190,11 @@ body,
   width: 280px;
   z-index: 10;
 }
+
+.enter.secondary {
+  margin-top: 4px;
+  padding: 10px 28px;
+  font-size: 15px;
+  background: transparent;
+  border-color: rgba(160, 210, 190, 0.35);
+}

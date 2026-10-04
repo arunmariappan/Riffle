@@ -53,7 +53,7 @@ on your PC later. This section is updated at the end of every phase; each phase 
 | 1 — The valley | M1 | **Done** (P6–P8 open) | Generated valley with erosion, terrain LOD, sky and time of day, walking, first planting; 58 fps at 1080p High |
 | 2 — Living water | M1 | **Done** (P10–P12 open) | Flow solver in a worker, river/pond/waterfall water with flow-map ripples, refraction, foam, caustics, wading and swimming, debris, first barb school; 54.6 fps |
 | 3 — Wind and vegetation | M2 | **Code done** (G1–G4 pending) | One wind state for every consumer, tree ferns, ferns, wildflowers and orchids, six water plants placed by depth and current, grass that bends away from you, falling petals, leaves and pollen, waterfall spray and mist, season looks; e2e and storm benchmark written. Not seen on screen yet |
-| 4 — Builder | M2 | Not started | |
+| 4 — Builder | M2 | **Code done** (G5–G6 pending) | UI shell and start screen (continue, open a file), builder camera, catalog with live thumbnails, drag and drop with a ghost and placement reasons, stones that fall and settle with Rapier, scatter/eraser/grass brushes, springs, gizmo and multi-select, 100-step undo/redo, Water/Wind/Trees/Time & weather panels, flow and depth/speed overlays, OPFS autosave and `.riffle` files. Not seen on screen yet |
 | 5 — Fish | M3 | Not started | |
 | 6 — Ecosystem and evolution | M3 | Not started | |
 | 7 — Spatial nature audio | M4 | Not started | |
@@ -76,8 +76,12 @@ on your PC later. This section is updated at the end of every phase; each phase 
 | P11 | **Waterfall spray and mist particles**: built in Phase 3 (`src/sim/particles/spray.ts`, `src/engine/water/Spray.ts`), with splashes for dropped stones. Needs a first look (G1). | — | Phase 2 | **Closed** (code; look in G1) |
 | P12 | Looking up from underwater shows the world above (refracted) but no Snell's window or total internal reflection. | Me | Phase 2 | Accepted |
 | P9 | The main bundle is 5 MB (EZ-Tree inlines its textures). Code-splitting the engine behind the start screen is planned. | Me | Phase 0 | Open (Phase 9) |
-| P13 | **The Workshop page and `pnpm bake` (D31) don't exist yet.** Nothing has needed them so far: erosion runs on the CPU (C8) and lite trees stand in for impostors (C10). The `bake` script in `package.json` points to a missing `tools/bake.ts`. Phase 4 catalog thumbnails need either the Workshop (a GPU job, run on your PC) or thumbnails rendered live in the app. | Cloud session (code), you (runs) | Phase 3 | Open (Phase 4) |
+| P13 | **The Workshop page and `pnpm bake` (D31)**: decided in Phase 4 that nothing needs them. Erosion runs on the CPU (C8), lite trees stand in for impostors (C10), and catalog thumbnails are rendered live in the app and cached in the browser (C19). The `bake` script was removed (C20). | — | Phase 3 | **Closed** |
 | P14 | **The Phase 3 code hasn't been seen on screen.** It was written, type-checked and unit-tested, but the visual checks were stopped. Reading the code at the handoff found one bug (the plants and air particles were never added to the scene; fixed). Expect a few more fixes after G1. | You (G1), then the cloud session | Phase 3 | Open |
+| P15 | **The builder hasn't been seen on screen** (cloud session, no GPU). Most likely to need a fix after G6: the gizmo (three's `TransformControls` on WebGPU), the thumbnail orientation and lighting (read back from a render target), the overlay drape's texture orientation, and the ghost ring height. The logic behind them (undo, placement rules, edit layer, saving, picking, brushes) is unit-tested. | You (G5, G6), then a session with the fixes | Phase 4 | Open |
+| P16 | **Fish schools can be released but not selected or moved** in the builder; inspecting and following a fish comes with Phase 5. | Me | Phase 4 | Open (Phase 5) |
+| P17 | **Springs (side brooks) add their water to the stream and bubble where they join**, but there is no visible brook channel running down the bank. | Me | Phase 4 | Open (Phase 9) |
+| P18 | **Weather "Follow the seasons"** gives each season its sky, haze and dawn mist; the choices in the Time & weather panel set clear, overcast, mist, rain, downpour or storm skies. Rain falling, rain rings, wet surfaces and rain raising the discharge come with Phase 6's weather. | Me | Phase 4 | Open (Phase 6) |
 
 ### Changes from the plan made during implementation
 
@@ -101,6 +105,10 @@ on your PC later. This section is updated at the end of every phase; each phase 
 | C16 | GPU compute particles; a wind texture (D15) | Falling petals, leaves and pollen are 260 instanced quads moved on the CPU. The wind is a few shader uniforms plus gust fronts computed in the shader, with a CPU twin (`src/sim/wind/windField.ts`) that particles, audio and ecology read. There is no wind texture | Same reason as C14; the analytic wind needs no texture and the CPU twin keeps the gusts identical everywhere |
 | C17 | Water plants placed by the scatter rules with everything else | Water plants are placed after the first flow solve, using the solved depth and current at each spot (`src/sim/scatter/aquatic.ts`): lotus and lilies in the still pond, bed plants by their depth and flow limits, Java fern and moss on submerged stones | The scatter needs the water, which only exists after the solve |
 | C18 | GPU particles for waterfall spray and mist | Spray, mist and splashes stepped on the CPU (`SprayField`, a few hundred particles) and drawn as camera-facing quads | Same reason as C14 and C16; pure TypeScript is unit-tested in Node |
+| C19 | Catalog thumbnails rendered by the Workshop page (`pnpm bake`) | Rendered live in the app behind the loading screen from the same generators and materials (`src/engine/thumbnails.ts`), cached in localStorage by content hash | No GPU bake step on your PC; a changed JSON file re-renders its own thumbnail |
+| C20 | A Workshop page and `pnpm bake` for GPU jobs (D31) | None: terrain erosion on the CPU (C8), lite trees (C10), live thumbnails (C19); the `bake` script is gone | Nothing needs a GPU bake; fewer steps for a fresh clone |
+| C21 | Picking with three-mesh-bvh | Analytic picking: rays against the height map, the water surface, ellipsoids (stones) and cylinders (trees, plants) in pure TypeScript (`src/builder/picking.ts`) | Instanced items aren't Object3Ds; analytic shapes are simpler, fast and unit-tested |
+| C22 | Fish placement checks water temperature from the ecology grids | A water-temperature model (`src/sim/ecology/temperature.ts`): seasons, the daily swing, lag behind the air, cooler fast or shaded water, a warmer pond | The ecology grids arrive in Phase 6; the same model feeds them |
 
 ### Local GPU checks (run on your PC)
 
@@ -114,6 +122,8 @@ wait for P1/P2. Commands assume `pnpm dev` is running, except the benchmark (`pn
 | G2 | **Spring and autumn golden shots** look right (Phase 3 done-when) | `npx tsx tools/golden.ts test-results/p3-spring riffles,pond 10 75`, and the same with `test-results/p3-autumn` and day `300` | 3 | Open |
 | G3 | **Phase 3 e2e tests** (`tests/e2e/wind.spec.ts`): a wind change reaches the shaders, water, clouds and particles within 1 s and the trees and grass visibly move more; each tree dynamics slider changes the picture of a tree in frozen storm wind. If a threshold is off, tune it from the logged numbers rather than loosening the test blindly | `pnpm test:e2e tests/e2e/wind.spec.ts` | 3 | Open (tests written) |
 | G4 | **Benchmarks**, 20 s each: the valley and the storm-wind flights stay within the budget at 1080p High, ≤ 1,500 draw calls, no more than 2 hitches in the storm | `pnpm bench` (runs both flights) | 3 | Open (test written) |
+| G5 | **Phase 4 e2e** (`tests/e2e/builder.spec.ts`): drag a boulder from the catalog into the riffles (it settles on the bed, undo and redo work); dragging lotus over fast water shows "Lotus needs still water…" and places nothing; every catalog item finds a valid spot and is placed (Java fern on a stone); the wind slider changes the world live; 100 undo and redo steps; save → close → reopen from the autosave, and save → open from a file, restore the valley exactly | `pnpm test:e2e tests/e2e/builder.spec.ts` | 4 | Open (tests written) |
+| G6 | **First look at the builder** (a few minutes by hand, `pnpm dev`): Tab into Build; catalog thumbnails are upright and lit; dragging a card shows the real item under the cursor with a green or red ring and a reason; a boulder dropped in the stream splashes, settles and a wake forms; click selects (yellow ring), the gizmo moves, turns and scales (1/2/3), Delete removes; scatter, erase and grass brushes; spring tool bubbles on a bank; flow arrows follow the stream and the depth/speed drape lines up with the water; every panel slider changes the world; Valley ▾ → Save/Open; reload offers "Continue where you left off" | Manual, `pnpm dev` | 4 | Open |
 
 ### Handoff to the cloud session
 
@@ -128,7 +138,7 @@ repo root.
 2. Phases 4–9 in order, using each phase's text and **Done when** list in [10](#10-phases). After each phase: update the
    Progress table, add a Built note, write `docs/phases/phase-N.md`, add a G row for every check that needs a GPU, add
    P rows for open points, then commit and push.
-3. Phase 4 needs a decision on catalog thumbnails (P13) before the catalog UI is built.
+3. ~~Phase 4 needs a decision on catalog thumbnails (P13)~~ Decided: rendered live in the app (C19).
 
 **What a cloud machine can and can't do here:**
 - It can: `pnpm install`, `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm test` (Vitest, Node only) and
@@ -1012,6 +1022,53 @@ overlays, and save/load (OPFS autosave + `.riffle` files).
 **Done when:** every catalog type can be placed by drag and drop (including Java fern onto a stone); invalid spots
 show a clear reason; 100 steps of undo/redo work; save → close the tab → reopen restores the valley exactly, from OPFS
 and from a file; every slider changes the world live; Playwright covers dragging a stone in and moving a slider.
+
+**Built (2026-10-04, cloud session; code done, not seen on screen yet, see P15 and G5–G6):**
+- **UI shell** (`src/app/`): a start screen with *Enter the valley*, *Continue where you left off* (latest autosave)
+  and *Open a valley file…*; a top bar with Explore / Build (Tab switches) and the Valley menu (save as, open, new
+  valley from a seed); toasts. Shared state lives in a Zustand store (`src/state/store.ts`); React only sends commands
+  to the engine. Radix UI for tabs, sliders and menus; CSS modules.
+- **Builder camera** (`src/engine/player/BuilderCamera.ts`): orbit around a ground point (right-drag turn,
+  middle-drag pan, wheel zoom, WASD pan, Q/E turn), eased and kept above the terrain. *Explore from here* drops you on
+  the ground at its focus.
+- **Catalog** (`CatalogPanel`): fish, water plants, stones, trees, bushes and ground; every item is a JSON file
+  checked with Zod (a fish schema joins the others; `content/fish/denison-barb.json` is the first species).
+  Thumbnails are rendered live from the real generators and materials and cached (C19).
+- **Drag and drop** (`src/engine/builder/Builder.ts`): a pointer-event drag session shows the real item under the
+  cursor on the terrain, the water, the bed or a stone, with a green or red ring and the reason next to the cursor
+  (`src/builder/placement.ts`, e.g. "Lotus needs still water 0.3–1.8 m deep", "Denison barbs need water under
+  26 °C (it's 29 °C here)"). The wheel turns the ghost, Shift+wheel scales it, Esc cancels. **Stones** fall as Rapier
+  convex hulls onto the ground and the stones near them, splash, settle, freeze in place, and the flow re-solves
+  around them. Fish arrive as a school (school-size slider).
+- **One item registry** (`src/engine/world/WorldItems.ts`): stones, trees, plants and schools have stable ids;
+  adding, removing and moving go through it, which keeps your **edit layer** (`src/builder/editLayer.ts`: additions,
+  removals, moves, grass painting, springs) current and re-solves the water around changed stones. Plants growing on
+  a stone move and go with it. The scene systems grow their instance buffers without new materials, so edits never
+  recompile a shader (this also fixes a recompile the Phase 3 plant system had when instances were added).
+- **Brushes and tools**: scatter (natural spacing, placement rules per dab), eraser (choose categories), grass brush
+  (Shift clears), spring tool (a side brook that adds its water downstream). Each stroke is one undo step.
+- **Selection and gizmo**: click or Shift+click; three's `TransformControls` moves across the ground, turns about
+  the vertical and scales evenly (1/2/3); items snap back onto the ground or bed; Delete removes. Picking is analytic
+  (C21).
+- **Undo/redo** (`src/builder/undo.ts`): 100 steps, async-safe (commands never overlap), slider drags merge into one
+  step, batches for brush strokes and multi-delete.
+- **Control panels** (`ControlPanel`): Water (flow, speed, level, clarity, spring tool), Wind (direction dial, speed
+  with its Beaufort name, gustiness, turbulence, calm and storm presets), Trees (flexibility, sway, leaf flutter,
+  response delay, per-species flexibility), Time & weather (time of day, day of year, speed, pause, season lock, and
+  the weather: follow the seasons or pick one, P18). All settings are one object (`src/state/settings.ts`) applied by
+  `World.applySettings`.
+- **Overlays** (`src/engine/overlays/Overlays.ts`): flow arrows colored by speed, and a heat-map drape for water
+  depth and current speed with a legend; Phase 6 adds its grids to the same drape.
+- **Saving** (`src/save/`): the `.riffle` format (magic, gzip via `CompressionStream`, versioned header, JSON,
+  binary sections, migrations), the save document (seed, clock, settings, edit layer, where you stood), autosave to
+  OPFS every 5 minutes and when the tab is hidden (newest 3 kept, `navigator.storage.persist()`), and *Save valley
+  as…* / *Open valley…* through the File System Access API with download and file-input fallbacks. Opening a valley
+  rebuilds it from its seed and applies your edits.
+- **Water temperature** (`src/sim/ecology/temperature.ts`, C22) for the fish placement rules.
+- **Tests**: 77 unit tests (+32: undo/redo incl. 100 steps and async ordering, placement rules and their reasons, the
+  edit layer, picking, brushes, temperature, the `.riffle` round trip and damage handling, autosave rotation,
+  settings normalization) and `tests/e2e/builder.spec.ts` (G5).
+- **Not met yet**: everything on screen is unverified (P15). Fish selection waits for Phase 5 (P16).
 
 ### Phase 5 — Fish (L)
 

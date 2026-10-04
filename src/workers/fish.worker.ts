@@ -53,10 +53,16 @@ const api = {
     }, 1000 / HZ);
   },
 
-  release(speciesIndex: number, x: number, z: number, count: number, spread = 2): number {
-    const placed = school?.release(speciesIndex, x, z, count, spread) ?? 0;
+  release(speciesIndex: number, x: number, z: number, count: number, spread = 2, schoolId = 0): number {
+    const placed = school?.release(speciesIndex, x, z, count, spread, schoolId) ?? 0;
     publish();
     return placed;
+  },
+
+  removeSchool(schoolId: number): number {
+    const removed = school?.removeSchool(schoolId) ?? 0;
+    publish();
+    return removed;
   },
 
   /** The player's position; `moving` = moved fast just now (scares shy fish). */

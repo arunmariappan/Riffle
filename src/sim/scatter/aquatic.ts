@@ -22,7 +22,7 @@ export interface AquaticWorld {
   path: { count: number; points: ArrayLike<number>; normals: ArrayLike<number> };
   halfWidth: ArrayLike<number>;
   /** Stones that can carry epiphytes (Java fern, moss). */
-  stones: readonly { x: number; z: number; top: number; radius: number }[];
+  stones: readonly { x: number; z: number; top: number; radius: number; uid?: string }[];
 }
 
 export interface AquaticItem {
@@ -34,6 +34,8 @@ export interface AquaticItem {
 export interface AquaticInstance extends ScatterInstance {
   /** Water depth at the plant (lotus and lily stems reach the surface). */
   depth: number;
+  /** The stone it grows on (Java fern, moss). */
+  host?: string;
 }
 
 export function scatterAquatic(world: AquaticWorld, items: readonly AquaticItem[], seed: string): AquaticInstance[] {
@@ -47,7 +49,7 @@ export function scatterAquatic(world: AquaticWorld, items: readonly AquaticItem[
     const rng = createRng(`${seed}:aquatic:${item.id}`);
     const [d0, d1] = p.depth ?? [0, 99];
     const maxFlow = p.maxFlow ?? 99;
-    const accept = (x: number, z: number, y: number | null, w: WaterProbe): boolean => {
+    const accept = (x: number, z: number, y: number | null, w: WaterProbe, host?: string): boolean => {
       if (w.depth < d0 || w.depth > d1 || w.speed > maxFlow) return false;
       if (!free(x, z, p.spacing * 0.5)) return false;
       taken.push({ x, z, r: p.spacing * 0.5 });
@@ -61,6 +63,7 @@ export function scatterAquatic(world: AquaticWorld, items: readonly AquaticItem[
         scale: rng.range(0.8, 1.2),
         phase: rng.range(0, Math.PI * 2),
         depth: y === null ? w.depth : Math.max(0.05, w.surface - y),
+        ...(host ? { host } : {}),
       });
       return true;
     };
@@ -92,7 +95,13 @@ export function scatterAquatic(world: AquaticWorld, items: readonly AquaticItem[
         if (s.radius < 0.35 || !rng.chance(Math.min(1, p.density))) continue;
         const w = world.probe(s.x, s.z);
         if (!w || w.surface - s.top < 0.08) continue;
-        accept(s.x + rng.range(-0.15, 0.15) * s.radius, s.z + rng.range(-0.15, 0.15) * s.radius, s.top - 0.02, w);
+        accept(
+          s.x + rng.range(-0.15, 0.15) * s.radius,
+          s.z + rng.range(-0.15, 0.15) * s.radius,
+          s.top - 0.02,
+          w,
+          s.uid,
+        );
       }
     }
   }

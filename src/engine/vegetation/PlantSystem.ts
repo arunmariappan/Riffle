@@ -19,21 +19,41 @@ import {
 import { createPlantMaterial } from './plantMaterial';
 import { createFoliageLook, type FoliageLook } from './materials';
 import type { WindUniforms } from './wind';
+import type { PickShape } from '../../builder/picking';
 
 type PlantDef = BushDef | WaterPlantDef;
 
 export interface PlantInstance extends ScatterInstance {
   /** Water depth (water plants), for stem length. */
   depth?: number;
+  /** The stone it grows on (Java fern, moss), so it moves and goes with the stone. */
+  host?: string;
+}
+
+/** A plant in the world, with its stable id. */
+export interface PlacedPlant extends PlantInstance {
+  uid: string;
+}
+
+interface Variant {
+  mesh: THREE.InstancedMesh;
+  geometry: THREE.BufferGeometry;
+  /** Generated vertex data (shared by every buffer this variant grows into). */
+  source: THREE.BufferGeometry;
+  height: number;
 }
 
 interface Kind {
   def: PlantDef;
   look: FoliageLook;
+  material: THREE.MeshStandardNodeMaterial;
   aquatic: boolean;
-  variants: { mesh: THREE.InstancedMesh; geometry: THREE.BufferGeometry; height: number; capacity: number }[];
-  instances: PlantInstance[];
+  floating: boolean;
+  variants: Variant[];
+  instances: PlacedPlant[];
   radius: number;
+  /** Generated plant size (for picking). */
+  size: number;
 }
 
 export interface FlowLookup {
@@ -71,9 +91,26 @@ function generate(def: PlantDef, seed: number, depth: number): PlantGeometry {
   }
 }
 
+function withInstanceAttributes(
+  source: THREE.BufferGeometry,
+  capacity: number,
+  aquatic: boolean,
+): THREE.BufferGeometry {
+  const g = new THREE.BufferGeometry();
+  for (const [name, attr] of Object.entries(source.attributes)) g.setAttribute(name, attr);
+  g.setIndex(source.index);
+  g.boundingBox = source.boundingBox;
+  g.boundingSphere = source.boundingSphere;
+  g.setAttribute('aInst', new THREE.InstancedBufferAttribute(new Float32Array(capacity * 4), 4));
+  g.setAttribute('aInstB', new THREE.InstancedBufferAttribute(new Float32Array(capacity * 4), 4));
+  if (aquatic) g.setAttribute('aFlow', new THREE.InstancedBufferAttribute(new Float32Array(capacity * 4), 4));
+  return g;
+}
+
 /**
  * Ground plants (ferns, wildflowers, orchids) and water plants (plan 6.4): generated variants, instanced, shown
  * within a radius of the camera (re-bucketed a few times a second). Water plants get the local current per instance.
+ * One material per kind, made once: adding plants only grows instance buffers, so it never recompiles a shader.
  */
 export class PlantSystem {
   readonly group = new THREE.Group();
@@ -82,15 +119,13 @@ export class PlantSystem {
   private flow: FlowLookup | null = null;
   private last = new THREE.Vector3(Infinity, 0, 0);
   private lastTime = -1;
+  private generated = 0;
   visibleCount = 0;
 
   constructor(defs: readonly PlantDef[], instances: readonly PlantInstance[], wind: WindUniforms) {
     this.wind = wind;
-    for (const def of defs)
-      this.addKind(
-        def,
-        instances.filter((i) => i.kind === def.id),
-      );
+    for (const def of defs) this.kindFor(def);
+    this.addInstances(defs, instances);
   }
 
   setFlow(flow: FlowLookup): void {
@@ -98,25 +133,22 @@ export class PlantSystem {
     this.update(this.last.clone(), this.lastTime, true);
   }
 
-  /** Adds more instances (water plants placed once the flow is solved, or builder placements). */
+  /** Adds generated instances (water plants placed once the flow is solved). */
   addInstances(defs: readonly PlantDef[], instances: readonly PlantInstance[]): void {
     for (const def of defs) {
-      const mine = instances.filter((i) => i.kind === def.id);
-      if (mine.length === 0) continue;
-      const existing = this.kinds.find((k) => k.def.id === def.id);
-      if (existing) {
-        this.group.remove(...existing.variants.map((v) => v.mesh));
-        this.kinds.splice(this.kinds.indexOf(existing), 1);
-        this.addKind(def, [...existing.instances, ...mine]);
-      } else {
-        this.addKind(def, mine);
+      const kind = this.kindFor(def);
+      for (const inst of instances) {
+        if (inst.kind !== def.id) continue;
+        kind.instances.push({ ...inst, uid: inst.uid ?? `g:${def.category}:${this.generated++}` });
       }
     }
-    this.lastTime = -1;
+    this.invalidate();
   }
 
-  private addKind(def: PlantDef, instances: PlantInstance[]): void {
-    if (instances.length === 0) return;
+  /** The kind for a definition, made on first use (its material and variant geometry). */
+  private kindFor(def: PlantDef): Kind {
+    const existing = this.kinds.find((k) => k.def.id === def.id);
+    if (existing) return existing;
     const aquatic = def.category === 'plants';
     const floating = def.generator.kind === 'lotus' || def.generator.kind === 'lily';
     const leaf = new THREE.Color(def.look.leafColor);
@@ -131,27 +163,41 @@ export class PlantSystem {
       def.category === 'plants' && def.generator.tipColor ? new THREE.Color(def.generator.tipColor) : undefined;
     const material = createPlantMaterial({ wind: this.wind, look, flowers: colors, tip, aquatic, floating });
     const seed = hashString(def.id) % 10000;
-    const variants: Kind['variants'] = [];
     const typicalDepth = floating ? 1 : 0;
-    const counts = new Array<number>(def.generator.variants).fill(0);
-    for (const inst of instances) counts[inst.variant % counts.length]! += 1;
+    const variants: Variant[] = [];
+    let size = 0.3;
     for (let v = 0; v < def.generator.variants; v++) {
       const pg = generate(def, seed + v * 17, typicalDepth);
-      const g = pg.geometry;
-      const capacity = Math.max(1, counts[v]!);
-      g.setAttribute('aInst', new THREE.InstancedBufferAttribute(new Float32Array(capacity * 4), 4));
-      g.setAttribute('aInstB', new THREE.InstancedBufferAttribute(new Float32Array(capacity * 4), 4));
-      if (aquatic) g.setAttribute('aFlow', new THREE.InstancedBufferAttribute(new Float32Array(capacity * 4), 4));
-      const mesh = new THREE.InstancedMesh(g, material, capacity);
-      mesh.count = 0;
-      mesh.frustumCulled = false;
-      mesh.castShadow = false;
-      mesh.receiveShadow = true;
-      this.group.add(mesh);
-      variants.push({ mesh, geometry: g, height: pg.height, capacity });
+      size = Math.max(size, pg.radius);
+      const geometry = withInstanceAttributes(pg.geometry, 16, aquatic);
+      const mesh = this.makeMesh(geometry, material, 16);
+      variants.push({ mesh, geometry, source: pg.geometry, height: pg.height });
     }
     const radius = aquatic ? 140 : def.generator.kind === 'fern' ? 70 : 80;
-    this.kinds.push({ def, look, aquatic, variants, instances, radius });
+    const kind: Kind = { def, look, material, aquatic, floating, variants, instances: [], radius, size };
+    this.kinds.push(kind);
+    return kind;
+  }
+
+  private makeMesh(geometry: THREE.BufferGeometry, material: THREE.Material, capacity: number): THREE.InstancedMesh {
+    const mesh = new THREE.InstancedMesh(geometry, material, capacity);
+    mesh.count = 0;
+    mesh.frustumCulled = false;
+    mesh.castShadow = false;
+    mesh.receiveShadow = true;
+    this.group.add(mesh);
+    return mesh;
+  }
+
+  private ensure(kind: Kind, v: Variant, needed: number): void {
+    const capacity = v.mesh.instanceMatrix.count;
+    if (needed <= capacity) return;
+    let next = capacity;
+    while (next < needed) next *= 2;
+    this.group.remove(v.mesh);
+    v.mesh.dispose();
+    v.geometry = withInstanceAttributes(v.source, next, kind.aquatic);
+    v.mesh = this.makeMesh(v.geometry, kind.material, next);
   }
 
   setSeason(weights: SeasonWeights): void {
@@ -191,57 +237,119 @@ export class PlantSystem {
     let visible = 0;
     for (const k of this.kinds) {
       const r2 = k.radius * k.radius;
-      const counts = new Array<number>(k.variants.length).fill(0);
+      const near: PlacedPlant[][] = k.variants.map(() => []);
       for (const inst of k.instances) {
         if ((inst.x - camera.x) ** 2 + (inst.z - camera.z) ** 2 > r2) continue;
-        const vi = inst.variant % k.variants.length;
-        const v = k.variants[vi]!;
-        const i = counts[vi]!;
-        if (i >= v.capacity) continue;
-        counts[vi] = i + 1;
-        _q.setFromAxisAngle(UP, inst.yaw);
-        // Water plants: stems reach the surface (vertical scale = depth / generated depth).
-        const sy =
-          k.aquatic && inst.depth !== undefined && (k.def.generator.kind === 'lotus' || k.def.generator.kind === 'lily')
-            ? inst.depth / Math.max(0.2, v.height - (k.def.generator.kind === 'lotus' ? 0.5 : 0))
-            : inst.scale;
-        _m.compose(_p.set(inst.x, inst.y, inst.z), _q, _s.set(inst.scale, sy, inst.scale));
-        v.mesh.setMatrixAt(i, _m);
-        (v.geometry.getAttribute('aInst') as THREE.InstancedBufferAttribute).setXYZW(
-          i,
-          inst.yaw,
-          inst.scale,
-          inst.phase,
-          1,
-        );
-        (v.geometry.getAttribute('aInstB') as THREE.InstancedBufferAttribute).setXYZW(
-          i,
-          inst.x,
-          inst.z,
-          v.height * inst.scale,
-          0,
-        );
-        if (k.aquatic) {
-          const s = this.flow?.sample(inst.x, inst.z);
-          (v.geometry.getAttribute('aFlow') as THREE.InstancedBufferAttribute).setXYZW(
-            i,
-            s?.velocityX ?? 0,
-            s?.velocityZ ?? 0,
-            s?.depth ?? 0,
-            s?.surface ?? 0,
-          );
-        }
+        near[inst.variant % k.variants.length]!.push(inst);
       }
       k.variants.forEach((v, vi) => {
-        v.mesh.count = counts[vi]!;
+        const list = near[vi]!;
+        this.ensure(k, v, list.length);
+        const aInst = v.geometry.getAttribute('aInst') as THREE.InstancedBufferAttribute;
+        const aInstB = v.geometry.getAttribute('aInstB') as THREE.InstancedBufferAttribute;
+        const aFlow = v.geometry.getAttribute('aFlow') as THREE.InstancedBufferAttribute | undefined;
+        list.forEach((inst, i) => {
+          _q.setFromAxisAngle(UP, inst.yaw);
+          // Floating plants: stems reach the surface (vertical scale = depth / generated depth).
+          const sy =
+            k.floating && inst.depth !== undefined
+              ? inst.depth / Math.max(0.2, v.height - (k.def.generator.kind === 'lotus' ? 0.5 : 0))
+              : inst.scale;
+          v.mesh.setMatrixAt(i, _m.compose(_p.set(inst.x, inst.y, inst.z), _q, _s.set(inst.scale, sy, inst.scale)));
+          aInst.setXYZW(i, inst.yaw, inst.scale, inst.phase, 1);
+          aInstB.setXYZW(i, inst.x, inst.z, v.height * inst.scale, 0);
+          if (aFlow) {
+            const s = this.flow?.sample(inst.x, inst.z);
+            aFlow.setXYZW(i, s?.velocityX ?? 0, s?.velocityZ ?? 0, s?.depth ?? 0, s?.surface ?? 0);
+          }
+        });
+        v.mesh.count = list.length;
         v.mesh.instanceMatrix.needsUpdate = true;
-        for (const name of ['aInst', 'aInstB', 'aFlow']) {
-          const a = v.geometry.getAttribute(name) as THREE.InstancedBufferAttribute | undefined;
-          if (a) a.needsUpdate = true;
-        }
-        visible += counts[vi]!;
+        aInst.needsUpdate = true;
+        aInstB.needsUpdate = true;
+        if (aFlow) aFlow.needsUpdate = true;
+        visible += list.length;
       });
     }
     this.visibleCount = visible;
+  }
+
+  /** Forces a refresh on the next update (after an edit or a new flow solve). */
+  invalidate(): void {
+    this.lastTime = -1;
+  }
+
+  private find(uid: string): { kind: Kind; index: number } | null {
+    for (const kind of this.kinds) {
+      const index = kind.instances.findIndex((i) => i.uid === uid);
+      if (index >= 0) return { kind, index };
+    }
+    return null;
+  }
+
+  get(uid: string): PlacedPlant | null {
+    const f = this.find(uid);
+    return f ? (f.kind.instances[f.index] as PlacedPlant) : null;
+  }
+
+  /** Plants one (builder). The definition is needed the first time a kind is used. */
+  add(def: PlantDef, inst: PlacedPlant): void {
+    this.kindFor(def).instances.push({ ...inst });
+    this.invalidate();
+  }
+
+  remove(uid: string): PlacedPlant | null {
+    const f = this.find(uid);
+    if (!f) return null;
+    const [inst] = f.kind.instances.splice(f.index, 1);
+    this.invalidate();
+    return inst ?? null;
+  }
+
+  move(uid: string, t: { x: number; y: number; z: number; yaw: number; scale: number; depth?: number }): void {
+    const p = this.get(uid);
+    if (!p) return;
+    p.x = t.x;
+    p.y = t.y;
+    p.z = t.z;
+    p.yaw = t.yaw;
+    p.scale = t.scale;
+    if (t.depth !== undefined) p.depth = t.depth;
+    this.invalidate();
+  }
+
+  *all(): Generator<PlacedPlant & { category: 'bushes' | 'plants' }> {
+    for (const k of this.kinds) for (const inst of k.instances) yield { ...inst, category: k.def.category };
+  }
+
+  /** Small upright cylinders, for picking in the builder. */
+  *pickShapes(): Generator<PickShape> {
+    for (const k of this.kinds) {
+      for (const inst of k.instances) {
+        const r = Math.max(0.15, k.size * inst.scale * 0.6);
+        const h = Math.max(0.2, (k.variants[0]?.height ?? 0.5) * inst.scale);
+        yield { uid: inst.uid, shape: 'cylinder', x: inst.x, y: inst.y - 0.05, z: inst.z, rx: r, ry: h, rz: 0 };
+      }
+    }
+  }
+
+  /** One plant with the real material (catalog thumbnails, drag ghosts). */
+  preview(def: PlantDef, depth = 0.8): THREE.Object3D {
+    const kind = this.kindFor(def);
+    const v = kind.variants[0] as Variant;
+    const g = withInstanceAttributes(v.source, 1, kind.aquatic);
+    const scale = 1;
+    const sy = kind.floating ? depth / Math.max(0.2, v.height - (def.generator.kind === 'lotus' ? 0.5 : 0)) : scale;
+    (g.getAttribute('aInst') as THREE.InstancedBufferAttribute).setXYZW(0, 0, scale, 0, 1);
+    (g.getAttribute('aInstB') as THREE.InstancedBufferAttribute).setXYZW(0, 0, 0, v.height, 0);
+    if (kind.aquatic) (g.getAttribute('aFlow') as THREE.InstancedBufferAttribute).setXYZW(0, 0, 0, depth, depth);
+    const mesh = new THREE.InstancedMesh(g, kind.material, 1);
+    mesh.setMatrixAt(0, _m.compose(_p.set(0, 0, 0), _q.identity(), _s.set(scale, sy, scale)));
+    mesh.frustumCulled = false;
+    const group = new THREE.Group();
+    group.add(mesh);
+    group.userData.radius = Math.max(0.2, kind.size);
+    group.userData.height = kind.floating ? depth + 0.3 : v.height;
+    return group;
   }
 }

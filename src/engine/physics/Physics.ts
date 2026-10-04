@@ -60,6 +60,62 @@ export class Physics {
     return steps;
   }
 
+  /** A convex hull for a rock: the unit rock's vertices scaled to the stone's radius and height. */
+  private stoneShape(points: Float32Array, radius: number, height: number): RAPIER.ColliderDesc | null {
+    const scaled = new Float32Array(points.length);
+    for (let i = 0; i < points.length; i += 3) {
+      scaled[i] = (points[i] as number) * radius;
+      scaled[i + 1] = (points[i + 1] as number) * height;
+      scaled[i + 2] = (points[i + 2] as number) * radius;
+    }
+    return RAPIER.ColliderDesc.convexHull(scaled) ?? RAPIER.ColliderDesc.ball(Math.max(radius, height) * 0.8);
+  }
+
+  /** A stone that falls and settles with physics (builder drops, plan 6.8). Density in t/m³. */
+  dropStone(
+    points: Float32Array,
+    radius: number,
+    height: number,
+    position: { x: number; y: number; z: number },
+    rotation: { x: number; y: number; z: number; w: number },
+    density = 2.6,
+  ): RAPIER.RigidBody {
+    const body = this.world.createRigidBody(
+      RAPIER.RigidBodyDesc.dynamic()
+        .setTranslation(position.x, position.y, position.z)
+        .setRotation(rotation)
+        .setCcdEnabled(true),
+    );
+    const shape = this.stoneShape(points, radius, height);
+    if (shape) this.world.createCollider(shape.setDensity(density).setFriction(0.8).setRestitution(0.1), body);
+    return body;
+  }
+
+  /** Freezes a settled stone in place so later stones can land on it. */
+  freeze(body: RAPIER.RigidBody): void {
+    body.setBodyType(RAPIER.RigidBodyType.Fixed, false);
+  }
+
+  /** A fixed collider for a stone that is already in place (so dropped stones land on it). */
+  addFixedStone(
+    points: Float32Array,
+    radius: number,
+    height: number,
+    position: { x: number; y: number; z: number },
+    rotation: { x: number; y: number; z: number; w: number },
+  ): RAPIER.RigidBody {
+    const body = this.world.createRigidBody(
+      RAPIER.RigidBodyDesc.fixed().setTranslation(position.x, position.y, position.z).setRotation(rotation),
+    );
+    const shape = this.stoneShape(points, radius, height);
+    if (shape) this.world.createCollider(shape.setFriction(0.8), body);
+    return body;
+  }
+
+  removeBody(body: RAPIER.RigidBody): void {
+    this.world.removeRigidBody(body);
+  }
+
   /** Casts a ray straight down and returns the hit height, or null. */
   groundHeight(x: number, z: number, fromY = 2000): number | null {
     const ray = new RAPIER.Ray({ x, y: fromY, z }, { x: 0, y: -1, z: 0 });

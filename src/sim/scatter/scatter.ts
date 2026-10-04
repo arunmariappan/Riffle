@@ -12,6 +12,8 @@ import { inRange, type Placement } from '../../content/schema';
 export interface ScatterInstance {
   /** Content id. */
   kind: string;
+  /** Stable id in the item registry (`g:<category>:<n>` for generated items, `u<n>` for yours). */
+  uid?: string;
   variant: number;
   x: number;
   y: number;

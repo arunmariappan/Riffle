@@ -3,15 +3,35 @@ import { Engine } from '../engine/Engine';
 import { buildTestScene, type TestSceneHandle } from '../engine/testScene';
 import { QUALITY_PRESETS, type QualityPreset } from '../engine/post/pipeline';
 import { World } from '../engine/world/World';
+import { Builder } from '../engine/builder/Builder';
+import { ThumbnailRenderer } from '../engine/thumbnails';
+import { thumbnailJobs } from '../engine/builder/previews';
 import { runBenchmark } from '../engine/bench';
 import { StatsOverlay } from './StatsOverlay';
 import { LoadingScreen } from './LoadingScreen';
 import { DevPanel } from './DevPanel';
+import { TopBar } from './shell/TopBar';
+import { PlacementHint, Toasts, Legend } from './shell/Overlays';
+import { CatalogPanel } from './builder/CatalogPanel';
+import { Toolbar } from './builder/Toolbar';
+import { ControlPanel } from './panels/ControlPanel';
+import { useUi, type AppMode } from '../state/store';
+import { decodeSave, type SaveData } from '../save/saveData';
+import { Autosaver } from '../save/autosave';
+import { createSaveStore, openFromDisk, requestPersistence, saveToDisk } from '../save/browserStorage';
 
 declare global {
   interface Window {
     /** Hooks for Playwright tests and the benchmark (dev and test only). */
-    __riffle?: { ready: boolean; engine?: Engine; world?: World; error?: string; [key: string]: unknown };
+    __riffle?: {
+      ready: boolean;
+      engine?: Engine;
+      world?: World;
+      builder?: Builder;
+      autosaver?: Autosaver;
+      error?: string;
+      [key: string]: unknown;
+    };
   }
 }
 
@@ -28,16 +48,23 @@ export interface AppParams {
   exposure?: number;
   stats: boolean;
   dev: boolean;
+  /** Open the valley file handed over before a reload ("Open valley…"). */
+  open: boolean;
+  /** Start from the latest autosave. */
+  resume: boolean;
+  /** Autosave even in test modes. */
+  autosave: boolean;
 }
 
 export function readParams(): AppParams {
   const p = new URLSearchParams(window.location.search);
   const q = p.get('quality');
   const num = (k: string) => (p.has(k) ? Number(p.get(k)) : undefined);
+  const testMode = p.has('test') || p.has('bench') || p.has('freeze');
   return {
     scene: p.get('scene') === 'test' ? 'test' : 'valley',
     quality: QUALITY_PRESETS.includes(q as QualityPreset) ? (q as QualityPreset) : 'high',
-    autostart: p.has('autostart') || p.has('test') || p.has('bench'),
+    autostart: p.has('autostart') || p.has('test') || p.has('bench') || p.has('open') || p.has('continue'),
     seed: p.get('seed') ?? 'riffle',
     day: num('day'),
     hour: num('hour'),
@@ -46,33 +73,121 @@ export function readParams(): AppParams {
     bench: p.get('bench'),
     exposure: num('exposure'),
     stats: p.has('stats') || p.has('bench') || import.meta.env.DEV,
-    dev: (import.meta.env.DEV || p.has('dev')) && !p.has('test') && !p.has('bench') && !p.has('freeze'),
+    dev: (import.meta.env.DEV || p.has('dev')) && !testMode,
+    open: p.has('open'),
+    resume: p.has('continue'),
+    autosave: p.has('autosave') || !testMode,
   };
+}
+
+/** Name of the hand-over file used by "Open valley…" (the page reloads to build the other valley). */
+const PENDING = 'open-pending.riffle';
+
+interface Session {
+  seed: string;
+  restore?: SaveData;
+}
+
+function ago(time: number): string {
+  const s = Math.max(0, (Date.now() - time) / 1000);
+  if (s < 90) return 'just now';
+  if (s < 3600) return `${Math.round(s / 60)} min ago`;
+  if (s < 86400 * 2) return `${Math.round(s / 3600)} h ago`;
+  return `${Math.round(s / 86400)} days ago`;
 }
 
 export function App({ adapterInfo }: { adapterInfo: string }) {
   const params = useRef(readParams()).current;
+  const store = useRef(createSaveStore()).current;
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [started, setStarted] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
   const [engine, setEngine] = useState<Engine | null>(null);
   const [world, setWorld] = useState<World | null>(null);
+  const [builder, setBuilder] = useState<Builder | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<{ label: string; fraction: number } | null>(null);
   const [quality, setQuality] = useState<QualityPreset>(params.quality);
   const [locked, setLocked] = useState(false);
+  const [latest, setLatest] = useState<number | null>(null);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
   const sceneRef = useRef<TestSceneHandle | null>(null);
+  const mode = useUi((s) => s.mode);
+  const toast = useUi((s) => s.toast);
 
-  const start = useCallback(() => setStarted(true), []);
+  const latestAutosave = useCallback(async () => {
+    const saver = new Autosaver(store, async () => new Uint8Array());
+    return saver.latest();
+  }, [store]);
+
+  // The start screen offers to continue from the latest autosave.
+  useEffect(() => {
+    void latestAutosave().then((l) => setLatest(l?.entry.time ?? null));
+  }, [latestAutosave]);
+
+  const startNew = useCallback(() => {
+    void requestPersistence();
+    setSession({ seed: params.seed });
+  }, [params.seed]);
+
+  const startFrom = useCallback(
+    async (bytes: Uint8Array) => {
+      try {
+        const { data } = await decodeSave(bytes);
+        void requestPersistence();
+        setSession({ seed: data.seed, restore: data });
+      } catch (err) {
+        toast(err instanceof Error ? err.message : String(err), 'error');
+      }
+    },
+    [toast],
+  );
+
+  const resume = useCallback(async () => {
+    const l = await latestAutosave();
+    if (l) await startFrom(l.bytes);
+    else startNew();
+  }, [latestAutosave, startFrom, startNew]);
+
+  const openFile = useCallback(async () => {
+    const file = await openFromDisk();
+    if (!file) return;
+    if (!world) {
+      await startFrom(file.bytes);
+      return;
+    }
+    try {
+      await decodeSave(file.bytes);
+    } catch (err) {
+      toast(err instanceof Error ? err.message : String(err), 'error');
+      return;
+    }
+    // Build the opened valley from scratch: hand the file to the reloaded page.
+    await store.write(PENDING, file.bytes);
+    const q = new URLSearchParams({ autostart: '', open: '', quality });
+    window.location.search = q.toString();
+  }, [world, store, quality, startFrom, toast]);
 
   useEffect(() => {
-    if (params.autostart) setStarted(true);
-  }, [params.autostart]);
+    if (!params.autostart || session) return;
+    if (params.open) {
+      void store.read(PENDING).then(async (bytes) => {
+        await store.remove(PENDING);
+        if (bytes) await startFrom(bytes);
+        else startNew();
+      });
+    } else if (params.resume) void resume();
+    else startNew();
+  }, [params, session, store, startFrom, startNew, resume]);
 
   useEffect(() => {
-    if (!started || !canvasRef.current) return;
+    if (!session || !canvasRef.current) return;
     let disposed = false;
     let created: Engine | null = null;
     let createdWorld: World | null = null;
+    let createdBuilder: Builder | null = null;
+    let autosaver: Autosaver | null = null;
+    let timer = 0;
+    const cleanups: (() => void)[] = [];
     window.__riffle = { ready: false };
     (async () => {
       try {
@@ -84,24 +199,60 @@ export function App({ adapterInfo }: { adapterInfo: string }) {
         } else {
           setLoading({ label: 'Waking up', fraction: 0 });
           createdWorld = await World.create(created, {
-            seed: params.seed,
+            seed: session.seed,
             quality: params.quality,
             day: params.day,
             hour: params.hour,
             spot: params.spot,
+            restore: session.restore,
             onProgress: (label, fraction) => setLoading({ label, fraction }),
           });
           if (disposed) return;
           if (params.freeze) createdWorld.clock.paused = true;
+          createdBuilder = new Builder(createdWorld);
+          const b = createdBuilder;
+          await b.precompile();
+          cleanups.push(created.onFrame((info) => b.update(info.dt)));
+          if (!params.bench) {
+            setLoading({ label: 'Painting the catalog', fraction: 0.985 });
+            const thumbs = new ThumbnailRenderer(created);
+            await thumbs.renderAll(thumbnailJobs(createdWorld), (id, url) => useUi.getState().setThumbnail(id, url));
+            thumbs.dispose();
+          }
           setWorld(createdWorld);
+          setBuilder(createdBuilder);
           setLoading({ label: 'Letting the light settle', fraction: 0.99 });
           created.start();
           await created.waitForSmoothFrames();
           setLoading(null);
+          if (params.autosave) {
+            autosaver = new Autosaver(store, () => b.saveBytes());
+            const save = () => {
+              void autosaver?.save().then(() => setSavedAt(Date.now()));
+            };
+            timer = window.setInterval(() => {
+              if (autosaver?.tick()) setTimeout(() => setSavedAt(Date.now()), 500);
+            }, 10_000);
+            const onHidden = () => {
+              if (document.visibilityState === 'hidden') save();
+            };
+            document.addEventListener('visibilitychange', onHidden);
+            window.addEventListener('pagehide', save);
+            cleanups.push(() => {
+              document.removeEventListener('visibilitychange', onHidden);
+              window.removeEventListener('pagehide', save);
+            });
+          }
         }
         created.start();
         setEngine(created);
-        window.__riffle = { ready: true, engine: created, world: createdWorld ?? undefined };
+        window.__riffle = {
+          ready: true,
+          engine: created,
+          world: createdWorld ?? undefined,
+          builder: createdBuilder ?? undefined,
+          autosaver: autosaver ?? undefined,
+        };
         if (params.bench && createdWorld) {
           const result = await runBenchmark(created, createdWorld, params.bench);
           window.__riffle = { ...window.__riffle, bench: result };
@@ -116,12 +267,15 @@ export function App({ adapterInfo }: { adapterInfo: string }) {
     })();
     return () => {
       disposed = true;
+      window.clearInterval(timer);
+      for (const c of cleanups) c();
       sceneRef.current?.dispose();
       sceneRef.current = null;
+      createdBuilder?.dispose();
       createdWorld?.dispose();
       created?.dispose();
     };
-  }, [started, params]);
+  }, [session, params, store]);
 
   useEffect(() => {
     const onChange = () => setLocked(document.pointerLockElement === canvasRef.current);
@@ -139,23 +293,72 @@ export function App({ adapterInfo }: { adapterInfo: string }) {
     world?.setQuality(q);
   };
 
+  const onMode = (m: AppMode) => builder?.setMode(m);
+
+  const saveAs = async () => {
+    if (!builder || !world) return;
+    try {
+      const bytes = await builder.saveBytes();
+      const date = new Date().toISOString().slice(0, 10);
+      if (await saveToDisk(bytes, `riffle-${world.valley.seed}-${date}.riffle`)) toast('Valley saved');
+    } catch (err) {
+      toast(`Couldn't save: ${err instanceof Error ? err.message : String(err)}`, 'error');
+    }
+  };
+
+  const newValley = () => {
+    const seed = window.prompt('Seed for the new valley (the same seed always grows the same valley):', 'riffle');
+    if (!seed) return;
+    window.location.search = new URLSearchParams({ autostart: '', seed, quality }).toString();
+  };
+
+  const ui = !params.bench && !params.freeze;
   return (
     <div className="app">
       <canvas ref={canvasRef} className="viewport" data-testid="viewport" onClick={onCanvasClick} />
-      {!started && (
+      {!session && (
         <div className="start-screen">
           <h1>Riffle</h1>
           <p className="tagline">A living monsoon mountain stream</p>
-          <button className="enter" onClick={start} autoFocus>
+          <button className="enter" onClick={startNew} autoFocus={latest === null}>
             Enter the valley
+          </button>
+          {latest !== null && (
+            <button className="enter" onClick={() => void resume()} autoFocus>
+              Continue where you left off ({ago(latest)})
+            </button>
+          )}
+          <button className="enter secondary" onClick={() => void openFile()}>
+            Open a valley file…
           </button>
           <p className="hint">{adapterInfo}</p>
         </div>
       )}
       {loading && <LoadingScreen label={loading.label} fraction={loading.fraction} />}
-      {world && !locked && !params.bench && !params.freeze && (
+      {world && builder && !loading && ui && (
+        <>
+          <TopBar
+            onMode={onMode}
+            onSave={() => void saveAs()}
+            onOpen={() => void openFile()}
+            onNew={newValley}
+            savedAt={savedAt ? ago(savedAt) : null}
+          />
+          {mode === 'builder' && (
+            <>
+              <CatalogPanel builder={builder} />
+              <ControlPanel builder={builder} />
+              <Toolbar builder={builder} />
+              <Legend />
+              <PlacementHint />
+            </>
+          )}
+          <Toasts />
+        </>
+      )}
+      {world && mode === 'explore' && !locked && ui && !loading && (
         <div className="explore-hint">
-          Click to look around · WASD to walk · Shift to run · Space to jump · Esc to release
+          Click to look around · WASD to walk · Shift to run · Space to jump · Tab to build · Esc to release
         </div>
       )}
       {error && (

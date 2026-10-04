@@ -3,7 +3,7 @@ import * as Comlink from 'comlink';
 import { uniform, uv, vec3, vec4, float, mx_noise_float, smoothstep, mix, texture, attribute } from 'three/tsl';
 import type { Valley } from '../../sim/terrain/valley';
 import { buildRiverPath, buildPathLookup, worldToStream, type RiverPath, type PathLookup } from '../../sim/flow/path';
-import type { Stone, SolveStats } from '../../sim/flow/field';
+import type { Stone, SolveStats, SideInflow } from '../../sim/flow/field';
 import { DoubleBuffer } from '../../sim/shared/doubleBuffer';
 import { SharedFlowSampler, type SharedFlowConfig } from '../../sim/flow/sharedSampler';
 import type { FlowWorkerApi, FlowLayout } from '../../workers/flow.worker';
@@ -425,6 +425,19 @@ export class FlowSystem {
     this.lastStats = await this.api.setStones(near, changed);
     this.pull();
     return this.lastStats;
+  }
+
+  /** Side brooks from the spring tool (plan 6.2). */
+  async setInflows(inflows: SideInflow[]): Promise<void> {
+    this.lastStats = (await this.api?.setInflows(inflows)) ?? null;
+    this.pull();
+  }
+
+  /** Cross-section and bank nearest a world point (the spring tool), or null away from the stream. */
+  bankAt(x: number, z: number): { section: number; bank: 'left' | 'right'; offset: number } | null {
+    const sc = this.streamCoords(x, z);
+    if (!sc) return null;
+    return { section: Math.round(sc.section), bank: sc.offset < 0 ? 'left' : 'right', offset: sc.offset };
   }
 
   async setDischarge(q: number): Promise<void> {

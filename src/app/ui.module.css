@@ -1,0 +1,451 @@
+/* Builder and panel UI (plan 6.8): quiet glass panels over the 3D view. Colors come from styles.css :root. */
+
+.topbar {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  backdrop-filter: blur(6px);
+  z-index: 5;
+}
+
+.brand {
+  font-weight: 300;
+  letter-spacing: 0.08em;
+  padding: 0 4px;
+}
+
+.segmented {
+  display: flex;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.segment,
+.segmentOn {
+  padding: 5px 14px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.segment:disabled {
+  color: var(--muted);
+  opacity: 0.5;
+  cursor: default;
+}
+
+.segmentOn {
+  background: rgba(79, 195, 176, 0.3);
+}
+
+.button,
+.buttonOn,
+.buttonDanger {
+  padding: 5px 10px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--panel-border);
+  border-radius: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.button:hover:not(:disabled),
+.buttonOn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.buttonOn {
+  background: rgba(79, 195, 176, 0.3);
+  border-color: rgba(79, 195, 176, 0.7);
+}
+
+.buttonDanger {
+  border-color: rgba(232, 106, 74, 0.6);
+}
+
+.buttonRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.menu {
+  min-width: 180px;
+  padding: 4px;
+  background: #13241f;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  z-index: 20;
+}
+
+.menuItem {
+  padding: 6px 10px;
+  font-size: 13px;
+  border-radius: 5px;
+  color: var(--text);
+  outline: none;
+  cursor: pointer;
+}
+
+.menuItem[data-highlighted] {
+  background: rgba(79, 195, 176, 0.25);
+}
+
+.menuSeparator {
+  height: 1px;
+  margin: 4px;
+  background: var(--panel-border);
+}
+
+.panel,
+.catalog {
+  position: absolute;
+  top: 60px;
+  width: 300px;
+  max-height: calc(100% - 180px);
+  overflow-y: auto;
+  padding: 8px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  backdrop-filter: blur(6px);
+  z-index: 4;
+}
+
+.panel {
+  right: 12px;
+}
+
+.catalog {
+  left: 12px;
+  width: 280px;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.tab {
+  padding: 4px 9px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.tab[data-state='active'] {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--panel-border);
+}
+
+.tabBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.subhead {
+  margin-top: 4px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.readout {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.select {
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+}
+
+.sliderRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sliderLabel {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+}
+
+.sliderValue {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.slider {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 18px;
+  touch-action: none;
+  user-select: none;
+}
+
+.sliderTrack {
+  position: relative;
+  flex-grow: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 2px;
+}
+
+.sliderRange {
+  position: absolute;
+  height: 100%;
+  background: var(--accent-2);
+  border-radius: 2px;
+}
+
+.sliderThumb {
+  display: block;
+  width: 14px;
+  height: 14px;
+  background: var(--text);
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.sliderThumb:focus-visible {
+  outline: 2px solid var(--accent-2);
+}
+
+.dialRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dial {
+  width: 84px;
+  height: 84px;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.dialFace {
+  fill: rgba(0, 0, 0, 0.25);
+  stroke: var(--panel-border);
+  stroke-width: 2;
+}
+
+.dialText {
+  fill: var(--muted);
+  font-size: 11px;
+}
+
+.dialArrow {
+  stroke: var(--accent-2);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.dialHead {
+  fill: var(--accent-2);
+}
+
+.dialLabel {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.card,
+.cardOn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  font: inherit;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--panel-border);
+  border-radius: 9px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.card:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.cardOn {
+  border-color: rgba(79, 195, 176, 0.8);
+  background: rgba(79, 195, 176, 0.14);
+}
+
+.thumb,
+.thumbPlaceholder {
+  width: 96px;
+  height: 96px;
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+.thumb {
+  background: radial-gradient(circle at 50% 40%, rgba(255, 255, 255, 0.12), rgba(0, 0, 0, 0.15));
+}
+
+.thumbPlaceholder {
+  display: block;
+  opacity: 0.35;
+}
+
+.cardName {
+  font-size: 12px;
+  text-align: center;
+}
+
+.inline {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+}
+
+.small {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.toolbar {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(760px, calc(100% - 640px));
+  min-width: 420px;
+  padding: 8px 10px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  backdrop-filter: blur(6px);
+  z-index: 4;
+}
+
+.toolRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.hintOk,
+.hintBad {
+  position: absolute;
+  padding: 5px 9px;
+  font-size: 12.5px;
+  border-radius: 7px;
+  pointer-events: none;
+  z-index: 8;
+  white-space: nowrap;
+}
+
+.hintOk {
+  background: rgba(22, 101, 52, 0.9);
+}
+
+.hintBad {
+  background: rgba(153, 27, 27, 0.92);
+}
+
+.toasts {
+  position: absolute;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 9;
+}
+
+.toast,
+.toastError {
+  padding: 7px 14px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.toastError {
+  background: rgba(120, 30, 20, 0.92);
+}
+
+.legend {
+  position: absolute;
+  left: 12px;
+  bottom: 14px;
+  width: 200px;
+  padding: 8px 10px;
+  font-size: 12px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  z-index: 4;
+}
+
+.legendBar {
+  height: 8px;
+  margin: 6px 0 4px;
+  border-radius: 4px;
+}
+
+.legendScale {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+}

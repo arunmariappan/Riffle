@@ -41,7 +41,7 @@ export class SimClock {
   /** Simulated seconds since 1 January 00:00 of year 0. */
   seconds: number;
   /** Simulated seconds per real second. */
-  timeScale = TIME_SPEEDS.minuteIsHour;
+  timeScale: number = TIME_SPEEDS.minuteIsHour;
   paused = false;
   /** When set, the season looks stay locked to this day of year while time of day still runs. */
   lockedDay: number | null = null;

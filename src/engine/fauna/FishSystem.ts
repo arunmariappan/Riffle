@@ -7,11 +7,53 @@ import { FISH_STRIDE, MAX_FISH } from '../../sim/boids/layout';
 import type { SpeciesBehavior } from '../../sim/boids/school';
 import { generateFish, SHAPES, type BodyTemplate } from '../../procgen/fish';
 import { createFishMaterial, type FishPattern } from './fishMaterial';
+import type { FishDef } from '../../content/schema';
 
 export interface FishSpeciesVisual {
   behavior: SpeciesBehavior;
   template: BodyTemplate;
   pattern: FishPattern;
+}
+
+const hex = (c: string) => new THREE.Color(c).getHex();
+
+/** A species' school behavior from its content file (plan 7). */
+export function behaviorFromDef(def: FishDef): SpeciesBehavior {
+  const b = def.behavior;
+  return {
+    id: def.id,
+    length: def.body.length,
+    cruise: b.cruise,
+    burst: b.burst,
+    comfortCurrent: b.comfortCurrent,
+    depthPreference: b.depthPreference,
+    minDepth: def.habitat.depth[0],
+    schooling: b.schooling,
+    shyness: b.shyness,
+  };
+}
+
+/** A species' pattern from its content file. */
+export function patternFromDef(def: FishDef): FishPattern {
+  const p = def.pattern;
+  const stripes = p.kind === 'stripes' ? 1 : 0;
+  return {
+    back: hex(p.back),
+    flank: hex(p.flank),
+    belly: hex(p.belly),
+    stripe: stripes,
+    stripeColor: hex(p.accent),
+    stripe2: stripes,
+    stripe2Color: hex(p.accent2),
+    fin: hex(p.fin),
+    finTip: hex(p.finTip),
+    metal: p.metal,
+    iridescence: p.iridescence,
+  };
+}
+
+export function visualFromDef(def: FishDef): FishSpeciesVisual {
+  return { behavior: behaviorFromDef(def), template: def.body.template, pattern: patternFromDef(def) };
 }
 
 /**
@@ -70,9 +112,47 @@ export class FishSystem {
     );
   }
 
-  /** Releases a school of `count` fish of species `index` around (x, z). */
-  async release(index: number, x: number, z: number, count: number, spread = 2.5): Promise<number> {
-    return (await this.api?.release(index, x, z, count, spread)) ?? 0;
+  /** Releases a school of `count` fish of species `index` around (x, z), tagged with a school id. */
+  async release(index: number, x: number, z: number, count: number, spread = 2.5, school = 0): Promise<number> {
+    return (await this.api?.release(index, x, z, count, spread, school)) ?? 0;
+  }
+
+  async removeSchool(school: number): Promise<number> {
+    return (await this.api?.removeSchool(school)) ?? 0;
+  }
+
+  /** Index of a species by content id, or -1. */
+  speciesIndex(id: string): number {
+    return this.species.findIndex((s) => s.behavior.id === id);
+  }
+
+  /** A few fish of a species with the real material (catalog thumbnails, drag ghosts). */
+  preview(index: number, count = 5): THREE.Object3D | null {
+    const src = this.meshes[index];
+    const sp = this.species[index];
+    if (!src || !sp) return null;
+    const g = new THREE.BufferGeometry();
+    for (const [name, attr] of Object.entries(src.geometry.attributes))
+      if (name !== 'aSwim') g.setAttribute(name, attr);
+    g.setIndex(src.geometry.index);
+    const swim = new THREE.InstancedBufferAttribute(new Float32Array(count * 4), 4);
+    g.setAttribute('aSwim', swim);
+    const mesh = new THREE.InstancedMesh(g, src.material, count);
+    const len = (sp.behavior.length[0] + sp.behavior.length[1]) / 2;
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2;
+      const d = i === 0 ? 0 : len * 1.6;
+      this.p.set(Math.cos(a) * d, (i % 2) * len * 0.3, Math.sin(a) * d);
+      this.q.setFromAxisAngle(this.up, 0.3 + i * 0.07);
+      mesh.setMatrixAt(i, this.m.compose(this.p, this.q, this.s.setScalar(len)));
+      swim.setXYZW(i, i * 1.3, 6, 0, len);
+    }
+    mesh.frustumCulled = false;
+    const group = new THREE.Group();
+    group.add(mesh);
+    group.userData.radius = len * 2.6;
+    group.userData.height = len * 0.6;
+    return group;
   }
 
   async throwFood(x: number, y: number, z: number): Promise<void> {

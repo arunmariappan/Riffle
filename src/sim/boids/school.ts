@@ -54,6 +54,8 @@ export const DENISON_BARB: SpeciesBehavior = {
 
 export interface Fish {
   species: number;
+  /** The school it was released with (the builder removes a school on undo). */
+  school: number;
   x: number;
   y: number;
   z: number;
@@ -103,7 +105,7 @@ export class School {
   }
 
   /** Releases `count` fish of a species around a point (in water). Returns how many were placed. */
-  release(speciesIndex: number, x: number, z: number, count: number, spread = 2): number {
+  release(speciesIndex: number, x: number, z: number, count: number, spread = 2, school = 0): number {
     const sp = this.species[speciesIndex] as SpeciesBehavior;
     let placed = 0;
     for (let k = 0; k < count * 6 && placed < count; k++) {
@@ -116,6 +118,7 @@ export class School {
       const heading = this.rng.range(0, Math.PI * 2);
       this.fish.push({
         species: speciesIndex,
+        school,
         x: fx,
         y: s.bed + s.depth * sp.depthPreference,
         z: fz,
@@ -133,6 +136,14 @@ export class School {
       placed++;
     }
     return placed;
+  }
+
+  /** Removes every fish of a school; returns how many went. */
+  removeSchool(school: number): number {
+    const before = this.fish.length;
+    for (let i = this.fish.length - 1; i >= 0; i--)
+      if ((this.fish[i] as Fish).school === school) this.fish.splice(i, 1);
+    return before - this.fish.length;
   }
 
   private rebuildGrid(): void {
