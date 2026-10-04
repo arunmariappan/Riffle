@@ -49,8 +49,7 @@ export function DevPanel({ world }: { world: World }) {
 
     const windState = {
       speed: world.wind.speed.value,
-      direction:
-        (Math.atan2(world.wind.direction.value.y, world.wind.direction.value.x) * 180) / Math.PI,
+      direction: (Math.atan2(world.wind.direction.value.y, world.wind.direction.value.x) * 180) / Math.PI,
       gustiness: world.wind.gustiness.value,
       turbulence: world.wind.turbulence.value,
     };
