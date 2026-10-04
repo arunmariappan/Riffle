@@ -1,0 +1,36 @@
+{
+  "id": "wildflowers",
+  "name": "Wildflowers",
+  "description": "Pink, yellow, white and violet flowers scattered through the meadow.",
+  "category": "bushes",
+  "generator": {
+    "kind": "wildflowers",
+    "height": [0.2, 0.45],
+    "variants": 4,
+    "flowerColors": ["#e8508a", "#f2c230", "#f4f0e8", "#8a5ad0"]
+  },
+  "look": {
+    "leafColor": "#4a7a26",
+    "leafAmount": {
+      "winter": 0.2,
+      "spring": 1,
+      "premonsoon": 0.7,
+      "monsoon": 0.9,
+      "autumn": 0.5
+    }
+  },
+  "placement": {
+    "surface": "land",
+    "riverDistance": [1.5, 45],
+    "maxSlope": 0.28,
+    "spacing": 1.2,
+    "density": 1.2
+  },
+  "growth": {
+    "yearsToMature": 1,
+    "lifespanYears": 3,
+    "spread": "wind-seeds",
+    "spreadRate": 1.5,
+    "spreadDistance": 10
+  }
+}

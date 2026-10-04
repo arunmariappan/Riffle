@@ -1,7 +1,8 @@
 import * as THREE from 'three/webgpu';
-import { attribute, positionLocal, uv, vec2, vec3, float, mix, sin, cos, uniform } from 'three/tsl';
+import { attribute, positionLocal, uv, vec2, vec3, float, mix, sin, cos, uniform, smoothstep } from 'three/tsl';
 import { createRng } from '../../sim/rng';
 import { grassSway, type WindUniforms } from './wind';
+import { globals } from '../globals';
 
 export interface GrassBlade {
   x: number;
@@ -95,10 +96,21 @@ export function createGrassMaterial(wind: WindUniforms, look: GrassLook): THREE.
   // Each blade leans its own way and curves more toward the tip, so the meadow reads soft, not spiky.
   const lean = t.mul(t).mul(ia.w).mul(ib.z.mul(0.5).add(0.25));
   const leanVec = vec3(cos(ib.y).mul(lean), lean.mul(lean).mul(-0.5), sin(ib.y).mul(lean));
+  // Blades bend away from your feet.
+  const player: any = globals.player;
+  const away = vec2(ia.x, ia.z).sub(vec2(player.x, player.z));
+  const dist = away.length().max(0.001);
+  const push = smoothstep(0.85, 0.15, dist)
+    .mul(smoothstep(1.6, 0.4, ia.y.sub(player.y).abs()))
+    .mul(t.mul(t))
+    .mul(ia.w)
+    .mul(0.9);
+  const pushVec = vec3(away.x.div(dist).mul(push), push.mul(-0.6), away.y.div(dist).mul(push));
   m.positionNode = rotated
     .add(vec3(ia.x, ia.y, ia.z))
     .add(sway)
-    .add(leanVec);
+    .add(leanVec)
+    .add(pushVec);
   const l: any = look;
   const lush = mix(vec3(l.baseColor), vec3(l.tipColor), t.mul(t));
   const tinted = mix(lush, vec3(l.dryColor), float(l.dryness).mul(ib.z.mul(0.6).add(0.4)));

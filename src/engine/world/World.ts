@@ -17,6 +17,10 @@ import { RockSystem, setRockWaterLevel, type PlacedStone } from './RockSystem';
 import { FlowSystem } from '../water/FlowSystem';
 import { Debris } from '../water/Debris';
 import { FishSystem } from '../fauna/FishSystem';
+import { PlantSystem } from '../vegetation/PlantSystem';
+import { AirParticles } from '../vegetation/AirParticles';
+import { scatterAquatic } from '../../sim/scatter/aquatic';
+import { CALM_BREEZE, type WindState } from '../../sim/wind/windField';
 import { DENISON_BARB } from '../../sim/boids/school';
 import { DENISON_PATTERN } from '../fauna/fishMaterial';
 import { globals } from '../globals';
@@ -66,6 +70,10 @@ export class World {
   readonly flow: FlowSystem;
   readonly debris: Debris;
   readonly fish: FishSystem;
+  readonly plants: PlantSystem;
+  readonly air: AirParticles;
+  /** The CPU wind state (authoritative); shader uniforms follow it. */
+  readonly windState: WindState = { ...CALM_BREEZE };
   readonly physics: Physics;
   readonly player: ExplorePlayer;
   readonly input: Input;
@@ -86,6 +94,7 @@ export class World {
     rocks: RockSystem;
     flow: FlowSystem;
     fish: FishSystem;
+    plants: PlantSystem;
     wind: WindUniforms;
     quality: QualityPreset;
     clock: SimClock;
@@ -100,6 +109,9 @@ export class World {
     this.flow = parts.flow;
     this.debris = new Debris(this.flow);
     this.fish = parts.fish;
+    this.plants = parts.plants;
+    this.plants.setFlow(this.flow);
+    this.air = new AirParticles((x, z) => this.heightAt(x, z));
     this.wind = parts.wind;
     this.quality = parts.quality;
     this.clock = parts.clock;
@@ -111,6 +123,8 @@ export class World {
       this.terrain.group,
       this.trees.group,
       this.grass.group,
+      this.plants.group,
+      this.air.mesh,
       this.rocks.group,
       this.flow.group,
       this.debris.mesh,
@@ -184,12 +198,42 @@ export class World {
     await nextFrame();
     progress('Growing the trees', 0.7);
     const trees = new TreeSystem(catalog.trees, treeInstances, wind);
+    const bushItems: ScatterItem[] = catalog.bushes.map((b) => ({
+      id: b.id,
+      placement: b.placement,
+      variants: b.generator.variants,
+    }));
+    const bushInstances = scatterItems(valley, bushItems, { seed: `${options.seed}:bushes`, exclusions });
+    const plants = new PlantSystem(catalog.bushes, bushInstances, wind);
     await nextFrame();
     progress('Placing the stones', 0.85);
     const heightAt = (x: number, z: number) => sampleHeight(valley.heightfield, x, z);
     const rocks = new RockSystem(catalog.stones, stoneInstances, heightAt, (x, z) => cellInfo(valley, x, z).wetness);
     progress('Letting the water run', 0.88);
     await flow.init(World.stonesForFlow(rocks.stones));
+    // Water plants go where the solved water suits them (depth, current), the pond plants in still water.
+    const pondLevel = flow.pondLevel();
+    const aquatic = scatterAquatic(
+      {
+        probe: (x, z) => {
+          const s = flow.sample(x, z);
+          if (s) return { depth: s.depth, speed: Math.hypot(s.velocityX, s.velocityZ), bed: s.bed, surface: s.surface };
+          const p = valley.pond;
+          if ((x - p.x) ** 2 + (z - p.z) ** 2 < p.radius ** 2) {
+            const bed = heightAt(x, z);
+            return pondLevel > bed ? { depth: pondLevel - bed, speed: 0, bed, surface: pondLevel } : null;
+          }
+          return null;
+        },
+        pond: valley.pond,
+        path: valley.path,
+        halfWidth: valley.profile.halfWidth,
+        stones: rocks.stones.map((s) => ({ x: s.x, z: s.z, top: s.y + s.height, radius: s.radius })),
+      },
+      catalog.plants.map((p) => ({ id: p.id, placement: p.placement, variants: p.generator.variants })),
+      `${options.seed}:aquatic`,
+    );
+    plants.addInstances(catalog.plants, aquatic);
     // The first fish (plan D30): a school of Denison barbs in the riffles, where you start.
     progress('Waking the fish', 0.9);
     const fish = new FishSystem([{ behavior: DENISON_BARB, template: 'torpedo', pattern: DENISON_PATTERN }]);
@@ -215,6 +259,7 @@ export class World {
       rocks,
       flow,
       fish,
+      plants,
       wind,
       quality: options.quality,
       clock,
@@ -243,6 +288,22 @@ export class World {
 
   heightAt(x: number, z: number): number {
     return sampleHeight(this.valley.heightfield, x, z);
+  }
+
+  /** Changes the wind (Wind panel, weather): updates the CPU state and every shader at once (plan 6.3). */
+  setWind(change: Partial<WindState>): void {
+    Object.assign(this.windState, change);
+    const len = Math.hypot(this.windState.dirX, this.windState.dirZ) || 1;
+    this.windState.dirX /= len;
+    this.windState.dirZ /= len;
+    (this.wind.direction as any).value.set(this.windState.dirX, this.windState.dirZ);
+    (this.wind.speed as any).value = this.windState.speed;
+    (this.wind.gustiness as any).value = this.windState.gustiness;
+    (this.wind.turbulence as any).value = this.windState.turbulence;
+    // Wind roughens the water (strongest on the pond) and moves the clouds.
+    (this.flow.look.chop as any).value = 0.12 + Math.min(1, this.windState.speed / 14) * 0.6;
+    (this.flow.pondLook.chop as any).value = 0.08 + Math.min(1, this.windState.speed / 12) * 0.8;
+    (this.sky.sky.cloudSpeed as any).value = 0.00002 * (0.4 + this.windState.speed / 5);
   }
 
   /**
@@ -306,6 +367,7 @@ export class World {
     this.clock.advance(info.dt);
     (this.wind.time as any).value = info.time;
     globals.time.value = info.time;
+    (globals.player.value as THREE.Vector3).copy(this.player.position);
     this.flow.update(info.time);
     if (this.mode === 'explore') this.player.update(info.dt, this.input, camera);
     this.physics.step(info.dt);
@@ -347,6 +409,14 @@ export class World {
     if (this.seasonTimer <= 0) {
       this.seasonTimer = 1;
       this.trees.setSeason(weights);
+      this.plants.setSeason(weights);
+      // Falling petals in spring, leaves in autumn, pollen before the monsoon.
+      this.air.mix = {
+        petal: weights.spring * 0.6,
+        leaf: 0.15 + weights.monsoon * 0.2,
+        autumnLeaf: weights.autumn * 0.6 + weights.winter * 0.2,
+      };
+      this.air.amount = 0.25 + weights.spring * 0.5 + weights.autumn * 0.5 + weights.premonsoon * 0.3;
       const lush = 0.45 + weights.monsoon * 0.55 + weights.autumn * 0.35 + weights.spring * 0.25 + weights.winter * 0.1;
       (this.terrain.look.lushness as any).value = Math.min(1, lush);
       this.grass.setLook(Math.min(1, lush));
@@ -361,6 +431,8 @@ export class World {
 
     this.terrain.update(camera.position);
     this.trees.update(camera.position, info.time);
+    this.plants.update(camera.position, info.time);
+    this.air.update(info.dt, camera.position, info.time, this.windState);
     this.grass.update(camera.position);
     this.debris.update(info.dt, camera.position, info.time);
     this.fish.update(info.dt, this.player.position);

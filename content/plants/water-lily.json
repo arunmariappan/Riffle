@@ -1,0 +1,30 @@
+{
+  "id": "water-lily",
+  "name": "Water lily",
+  "description": "Floating notched pads with white flowers on still water.",
+  "category": "plants",
+  "generator": {
+    "kind": "lily",
+    "height": [0.3, 1.5],
+    "variants": 3,
+    "flowerColor": "#f6f2ee"
+  },
+  "look": {
+    "leafColor": "#3f6a2a"
+  },
+  "placement": {
+    "surface": "pond",
+    "depth": [0.3, 1.6],
+    "maxFlow": 0.12,
+    "maxSlope": 0.5,
+    "spacing": 1.4,
+    "density": 1
+  },
+  "growth": {
+    "yearsToMature": 1,
+    "lifespanYears": 10,
+    "spread": "drift",
+    "spreadRate": 0.6,
+    "spreadDistance": 6
+  }
+}

@@ -54,21 +54,18 @@ export function DevPanel({ world }: { world: World }) {
       turbulence: world.wind.turbulence.value,
     };
     const wi = pane.addFolder({ title: 'Wind' });
-    wi.addBinding(windState, 'speed', { min: 0, max: 25, step: 0.1, label: 'speed m/s' }).on(
-      'change',
-      (e) => (world.wind.speed.value = e.value),
+    wi.addBinding(windState, 'speed', { min: 0, max: 25, step: 0.1, label: 'speed m/s' }).on('change', (e) =>
+      world.setWind({ speed: e.value }),
     );
     wi.addBinding(windState, 'direction', { min: -180, max: 180, step: 1 }).on('change', (e) => {
       const a = (e.value * Math.PI) / 180;
-      world.wind.direction.value.set(Math.cos(a), Math.sin(a));
+      world.setWind({ dirX: Math.cos(a), dirZ: Math.sin(a) });
     });
-    wi.addBinding(windState, 'gustiness', { min: 0, max: 1.5, step: 0.01 }).on(
-      'change',
-      (e) => (world.wind.gustiness.value = e.value),
+    wi.addBinding(windState, 'gustiness', { min: 0, max: 1.5, step: 0.01 }).on('change', (e) =>
+      world.setWind({ gustiness: e.value }),
     );
-    wi.addBinding(windState, 'turbulence', { min: 0, max: 1.5, step: 0.01 }).on(
-      'change',
-      (e) => (world.wind.turbulence.value = e.value),
+    wi.addBinding(windState, 'turbulence', { min: 0, max: 1.5, step: 0.01 }).on('change', (e) =>
+      world.setWind({ turbulence: e.value }),
     );
 
     const trees = {

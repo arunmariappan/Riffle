@@ -126,7 +126,37 @@ export const stoneSchema = z.object({
   density: z.number().default(2.6),
 });
 
+export const bushSchema = z.object({
+  ...baseItem,
+  category: z.literal('bushes'),
+  generator: z.object({
+    kind: z.enum(['fern', 'wildflowers', 'orchid']),
+    height: range,
+    variants: z.number().int().min(1).max(6).default(3),
+    /** Flower colors (wildflowers pick one per flower; orchids use the first). */
+    flowerColors: z.array(rgb).default([]),
+  }),
+  look: seasonalLookSchema,
+  wind: windSchema.default({ stiffness: 1 }),
+});
+
+export const waterPlantSchema = z.object({
+  ...baseItem,
+  category: z.literal('plants'),
+  generator: z.object({
+    kind: z.enum(['lotus', 'lily', 'java-fern', 'cryptocoryne', 'rotala', 'moss']),
+    height: range,
+    variants: z.number().int().min(1).max(6).default(3),
+    flowerColor: rgb.optional(),
+    /** Tip color (red Rotala): leaves blend toward it at the top. */
+    tipColor: rgb.optional(),
+  }),
+  look: seasonalLookSchema,
+});
+
 export type TreeDef = z.infer<typeof treeSchema>;
+export type BushDef = z.infer<typeof bushSchema>;
+export type WaterPlantDef = z.infer<typeof waterPlantSchema>;
 export type StoneDef = z.infer<typeof stoneSchema>;
 export type Placement = z.infer<typeof placementSchema>;
 export type Tolerance = z.infer<typeof toleranceSchema>;

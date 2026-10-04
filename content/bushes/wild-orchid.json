@@ -1,0 +1,37 @@
+{
+  "id": "wild-orchid",
+  "name": "Wild orchid",
+  "description": "Sprays of pink and violet orchids in damp shade near the water.",
+  "category": "bushes",
+  "generator": {
+    "kind": "orchid",
+    "height": [0.25, 0.4],
+    "variants": 3,
+    "flowerColors": ["#d860b8"]
+  },
+  "look": {
+    "leafColor": "#3f6a28",
+    "leafAmount": {
+      "winter": 0.8,
+      "spring": 1,
+      "premonsoon": 1,
+      "monsoon": 1,
+      "autumn": 1
+    }
+  },
+  "placement": {
+    "surface": "land",
+    "riverDistance": [1, 40],
+    "maxSlope": 0.5,
+    "wetness": [0.45, 1],
+    "spacing": 3,
+    "density": 0.35
+  },
+  "growth": {
+    "yearsToMature": 3,
+    "lifespanYears": 30,
+    "spread": "wind-seeds",
+    "spreadRate": 0.1,
+    "spreadDistance": 20
+  }
+}

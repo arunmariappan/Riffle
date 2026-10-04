@@ -136,6 +136,7 @@ export function addLanceLeaf(
   width: number,
   tint: number,
   phase: number,
+  attrs?: (p: THREE.Vector3) => Record<string, number | readonly number[]>,
 ): void {
   const side = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0));
   if (side.lengthSq() < 1e-6) side.set(1, 0, 0);
@@ -149,14 +150,15 @@ export function addLanceLeaf(
       .add(side.clone().multiplyScalar(s * width))
       .add(fold.clone().multiplyScalar(Math.abs(s) > 0 ? 0 : 1))
       .add(new THREE.Vector3(0, -length * 0.25 * t * t, 0));
-  const extra = { aTint: tint, aPhase: phase };
-  const v0 = b.vertex(at(0, 0), normal, 0.5, 0, extra);
-  const v1 = b.vertex(at(0.3, -1), normal, 0, 0.3, extra);
-  const v2 = b.vertex(at(0.3, 1), normal, 1, 0.3, extra);
-  const v3 = b.vertex(at(0.35, 0), normal, 0.5, 0.35, extra);
-  const v4 = b.vertex(at(0.7, -0.7), normal, 0.1, 0.7, extra);
-  const v5 = b.vertex(at(0.7, 0.7), normal, 0.9, 0.7, extra);
-  const v6 = b.vertex(at(1, 0), normal, 0.5, 1, extra);
+  const extra = (p: THREE.Vector3) => (attrs ? attrs(p) : { aTint: tint, aPhase: phase });
+  const vert = (p: THREE.Vector3, u: number, v: number) => b.vertex(p, normal, u, v, extra(p));
+  const v0 = vert(at(0, 0), 0.5, 0);
+  const v1 = vert(at(0.3, -1), 0, 0.3);
+  const v2 = vert(at(0.3, 1), 1, 0.3);
+  const v3 = vert(at(0.35, 0), 0.5, 0.35);
+  const v4 = vert(at(0.7, -0.7), 0.1, 0.7);
+  const v5 = vert(at(0.7, 0.7), 0.9, 0.7);
+  const v6 = vert(at(1, 0), 0.5, 1);
   b.triangle(v0, v1, v3);
   b.triangle(v0, v3, v2);
   b.quad(v1, v4, v6, v3);

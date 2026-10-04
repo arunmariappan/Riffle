@@ -6,6 +6,7 @@ import type { SeasonWeights } from '../../sim/time/clock';
 import { SEASONS } from '../../sim/time/clock';
 import { generateTree } from '../../procgen/trees';
 import { generateBamboo } from '../../procgen/bamboo';
+import { generateTreeFern } from '../../procgen/plants';
 import { generateLiteTree } from '../../procgen/rocks';
 import { plantSway, type WindUniforms } from './wind';
 import {
@@ -143,6 +144,27 @@ export class TreeSystem {
         for (const [geometry, material] of [
           [bamboo.culms, barkMat],
           [bamboo.leaves, leafMat],
+        ] as const) {
+          const g = shareGeometry(geometry);
+          instanceAttributes(g, counts[v]!);
+          const mesh = new THREE.InstancedMesh(g, material, counts[v]!);
+          mesh.count = 0;
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+          mesh.frustumCulled = false;
+          this.group.add(mesh);
+          parts.push({ mesh, geometry: g });
+        }
+      } else if (gen.kind === 'tree-fern') {
+        const fern = generateTreeFern(seedBase + v * 53, (h0 + h1) / 2);
+        height = fern.height;
+        radius = fern.radius;
+        const bark = loadLayer('japanese_zelkova_bark', 0x5a4030);
+        barkMat ??= createBarkMaterial(this.wind, look, bark.diffuse, bark.normal, 0x6a5040);
+        leafMat ??= createPolyLeafMaterial(this.wind, look);
+        for (const [geometry, material] of [
+          [fern.trunk, barkMat],
+          [fern.crown, leafMat],
         ] as const) {
           const g = shareGeometry(geometry);
           instanceAttributes(g, counts[v]!);

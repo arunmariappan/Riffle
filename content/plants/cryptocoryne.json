@@ -1,0 +1,29 @@
+{
+  "id": "cryptocoryne",
+  "name": "Cryptocoryne",
+  "description": "Rosettes of wavy bronze-green leaves on the bed of slow, shallow water.",
+  "category": "plants",
+  "generator": {
+    "kind": "cryptocoryne",
+    "height": [0.1, 0.25],
+    "variants": 3
+  },
+  "look": {
+    "leafColor": "#4a5a26"
+  },
+  "placement": {
+    "surface": "bed",
+    "depth": [0.15, 1.2],
+    "maxFlow": 0.35,
+    "maxSlope": 0.5,
+    "spacing": 0.7,
+    "density": 1
+  },
+  "growth": {
+    "yearsToMature": 1,
+    "lifespanYears": 10,
+    "spread": "drift",
+    "spreadRate": 0.6,
+    "spreadDistance": 6
+  }
+}

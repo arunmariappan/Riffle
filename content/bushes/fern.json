@@ -1,0 +1,33 @@
+{
+  "id": "fern",
+  "name": "Fern",
+  "description": "Lacy fronds unrolling across the damp forest floor.",
+  "category": "bushes",
+  "generator": {
+    "kind": "fern",
+    "height": [0.45, 0.9],
+    "variants": 3
+  },
+  "look": {
+    "leafColor": "#3d7322",
+    "winter": {
+      "color": "#6a6a2a",
+      "mix": 0.4
+    }
+  },
+  "placement": {
+    "surface": "land",
+    "riverDistance": [2, 260],
+    "maxSlope": 0.45,
+    "wetness": [0.2, 1],
+    "spacing": 2,
+    "density": 0.7
+  },
+  "growth": {
+    "yearsToMature": 2,
+    "lifespanYears": 15,
+    "spread": "wind-seeds",
+    "spreadRate": 0.8,
+    "spreadDistance": 8
+  }
+}

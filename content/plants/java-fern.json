@@ -1,0 +1,29 @@
+{
+  "id": "java-fern",
+  "name": "Java fern",
+  "description": "Dark, tough leaves that grow on stones and wood in the current.",
+  "category": "plants",
+  "generator": {
+    "kind": "java-fern",
+    "height": [0.15, 0.3],
+    "variants": 3
+  },
+  "look": {
+    "leafColor": "#2a5020"
+  },
+  "placement": {
+    "surface": "stone",
+    "depth": [0.2, 2.5],
+    "maxFlow": 1.2,
+    "maxSlope": 0.5,
+    "spacing": 0.8,
+    "density": 0.6
+  },
+  "growth": {
+    "yearsToMature": 1,
+    "lifespanYears": 10,
+    "spread": "drift",
+    "spreadRate": 0.6,
+    "spreadDistance": 6
+  }
+}

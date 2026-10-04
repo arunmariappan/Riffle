@@ -1,0 +1,30 @@
+{
+  "id": "red-rotala",
+  "name": "Red Rotala",
+  "description": "Stems of small round leaves that blush red at the tips in sunny, clear water.",
+  "category": "plants",
+  "generator": {
+    "kind": "rotala",
+    "height": [0.15, 0.35],
+    "variants": 3,
+    "tipColor": "#d03a2a"
+  },
+  "look": {
+    "leafColor": "#5a7a2a"
+  },
+  "placement": {
+    "surface": "bed",
+    "depth": [0.2, 1],
+    "maxFlow": 0.25,
+    "maxSlope": 0.5,
+    "spacing": 0.6,
+    "density": 0.7
+  },
+  "growth": {
+    "yearsToMature": 1,
+    "lifespanYears": 10,
+    "spread": "drift",
+    "spreadRate": 0.6,
+    "spreadDistance": 6
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "id": "tree-fern",
+  "name": "Tree fern",
+  "description": "An ancient fern on a fibrous trunk, its arching fronds glowing in damp shade.",
+  "category": "trees",
+  "generator": {
+    "kind": "tree-fern",
+    "height": [2.5, 5],
+    "variants": 3
+  },
+  "look": {
+    "leafColor": "#3c7a24",
+    "leafAmount": {
+      "winter": 0.9,
+      "spring": 1,
+      "premonsoon": 0.95,
+      "monsoon": 1,
+      "autumn": 1
+    }
+  },
+  "wind": {
+    "stiffness": 1.1
+  },
+  "placement": {
+    "surface": "land",
+    "riverDistance": [3, 90],
+    "heightAboveBank": [0.3, 60],
+    "maxSlope": 0.45,
+    "wetness": [0.35, 1],
+    "spacing": 4,
+    "density": 0.9
+  },
+  "tolerance": {
+    "moisture": {
+      "limits": [0.3, 1],
+      "ideal": [0.55, 1]
+    },
+    "light": {
+      "limits": [0.05, 0.9],
+      "ideal": [0.15, 0.6]
+    }
+  },
+  "growth": {
+    "yearsToMature": 15,
+    "lifespanYears": 120,
+    "spread": "wind-seeds",
+    "spreadRate": 0.15,
+    "spreadDistance": 15
+  }
+}
