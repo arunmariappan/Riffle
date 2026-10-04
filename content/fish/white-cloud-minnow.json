@@ -1,0 +1,44 @@
+{
+  "id": "white-cloud-minnow",
+  "name": "White cloud minnow",
+  "plural": "White cloud minnows",
+  "description": "A small, shimmering bronze-green fish with a gold line along its side and red-gold fins with white tips. Schools in calm, cool margins.",
+  "category": "fish",
+  "body": { "template": "torpedo", "fins": "forked", "length": [0.03, 0.045] },
+  "pattern": {
+    "kind": "plain",
+    "back": "#5a6a3a",
+    "flank": "#a4a868",
+    "belly": "#e6e2c8",
+    "accent": "#f0c060",
+    "accent2": "#2a2a1a",
+    "fin": "#d84a2a",
+    "finTip": "#f4f0e8",
+    "metal": 0.25,
+    "iridescence": 0.6
+  },
+  "behavior": {
+    "cruise": 0.25,
+    "burst": 0.8,
+    "comfortCurrent": 0.15,
+    "depthPreference": 0.65,
+    "schooling": { "separation": 0.07, "alignment": 1, "cohesion": 0.8, "radius": 0.7 },
+    "shyness": 0.4,
+    "rheotaxis": 0.6,
+    "curiosity": 0.4
+  },
+  "habitat": { "depth": [0.1, 1.5], "flow": [0, 0.3], "temperature": [14, 24], "oxygenMin": 5 },
+  "diet": ["insects", "algae"],
+  "spawning": { "seasons": ["spring", "premonsoon"], "ground": "plants" },
+  "life": { "maturityYears": 0.5, "lifespanYears": 3, "fecundity": 60 },
+  "genes": {
+    "bodySize": { "mean": 0.5, "sd": 0.12 },
+    "swimStrength": { "mean": 0.45, "sd": 0.1 },
+    "preferredFlow": { "mean": 0.4, "sd": 0.12 },
+    "brightness": { "mean": 0.6, "sd": 0.1 },
+    "shyness": { "mean": 0.4, "sd": 0.12 },
+    "heritability": 0.4,
+    "mutation": 0.02
+  },
+  "school": { "size": 25, "max": 120 }
+}

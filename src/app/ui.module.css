@@ -449,3 +449,43 @@
   justify-content: space-between;
   color: var(--muted);
 }
+
+.fishCard {
+  position: absolute;
+  right: 12px;
+  bottom: 14px;
+  width: 230px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  backdrop-filter: blur(6px);
+  z-index: 6;
+}
+
+.fishTitle {
+  font-size: 15px;
+}
+
+.trait {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  align-items: center;
+  font-size: 12px;
+}
+
+.traitBar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.traitBar > span {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+}

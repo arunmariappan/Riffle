@@ -22,6 +22,37 @@ export interface BenchResult {
   quality: string;
   /** Wind speed during the run (m/s). */
   windSpeed: number;
+  /** Fish in the valley during the run. */
+  fish: number;
+}
+
+/** Tops the valley up to about `target` fish, each species in its own water (the 500-fish budget check, Phase 5). */
+async function addFish(world: World, target: number): Promise<void> {
+  const zones: [string, string][] = [
+    ['denison-barb', 'riffles'],
+    ['white-cloud-minnow', 'bend'],
+    ['celestial-pearl-danio', 'bend'],
+    ['hillstream-loach', 'rapids'],
+    ['golden-mahseer', 'pool'],
+    ['koi', 'pond'],
+  ];
+  let id = 1000;
+  for (let round = 0; round < 12 && world.fish.count < target; round++) {
+    for (const [species, zone] of zones) {
+      const index = world.fish.speciesIndex(species);
+      const spot = index >= 0 ? world.findFishSpot(index, zone, ((round * 0.37) % 1) + 0.05) : null;
+      if (spot)
+        await world.fish.release(
+          index,
+          spot.x,
+          spot.z,
+          species === 'golden-mahseer' || species === 'koi' ? 4 : 20,
+          3,
+          id++,
+        );
+    }
+    await new Promise((r) => setTimeout(r, 100));
+  }
 }
 
 /**
@@ -34,6 +65,7 @@ export async function runBenchmark(engine: Engine, world: World, name: string): 
   const seconds = Number(params.get('benchSeconds') ?? 20);
   world.mode = 'fixed';
   if (name === 'storm') world.setWind(MONSOON_STORM);
+  if (name === 'fish') await addFish(world, 500);
   const points = world.valley.spots.map((s) => new THREE.Vector3(s.x, world.heightAt(s.x, s.z) + 3, s.z));
   const curve = new THREE.CatmullRomCurve3(points, false, 'centripetal');
   const frameMs: number[] = [];
@@ -82,6 +114,7 @@ export async function runBenchmark(engine: Engine, world: World, name: string): 
           trianglesMax,
           quality: world.quality,
           windSpeed: world.windState.speed,
+          fish: world.fish.count,
         });
       }
     });

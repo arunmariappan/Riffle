@@ -16,7 +16,7 @@ import { GrassSystem } from '../vegetation/GrassSystem';
 import { RockSystem, setRockWaterLevel, type PlacedStone } from './RockSystem';
 import { FlowSystem } from '../water/FlowSystem';
 import { Debris } from '../water/Debris';
-import { FishSystem, visualFromDef } from '../fauna/FishSystem';
+import { FishSystem } from '../fauna/FishSystem';
 import { PlantSystem } from '../vegetation/PlantSystem';
 import { AirParticles } from '../vegetation/AirParticles';
 import { WaterEffects } from '../water/Spray';
@@ -54,7 +54,20 @@ export interface WorldOptions {
   restore?: SaveData;
 }
 
-export type CameraMode = 'explore' | 'builder' | 'photo' | 'fixed';
+export type CameraMode = 'explore' | 'builder' | 'photo' | 'fixed' | 'follow';
+
+/**
+ * The fish the valley starts with (plan 6.5): each species where it lives. Phase 6's ecology takes over from here.
+ * Zone, school count and fish per school.
+ */
+const STARTING_FISH: { id: string; zone: string; schools: number; count: number }[] = [
+  { id: 'denison-barb', zone: 'riffles', schools: 3, count: 18 },
+  { id: 'hillstream-loach', zone: 'rapids', schools: 2, count: 10 },
+  { id: 'golden-mahseer', zone: 'pool', schools: 1, count: 4 },
+  { id: 'white-cloud-minnow', zone: 'bend', schools: 2, count: 25 },
+  { id: 'celestial-pearl-danio', zone: 'bend', schools: 1, count: 20 },
+  { id: 'koi', zone: 'pond', schools: 1, count: 6 },
+];
 
 const QUALITY_GRASS: Record<QualityPreset, number> = { low: 0.35, medium: 0.6, high: 1, ultra: 1.3 };
 /** Render resolution per preset; TRAA upscales to the output (plan D9). */
@@ -287,7 +300,7 @@ export class World {
     plants.addInstances(catalog.plants, aquatic);
     // Every species from content/fish gets its mesh now; the first barbs swim in the riffles (plan D30).
     progress('Waking the fish', 0.9);
-    const fish = new FishSystem(catalog.fish.map(visualFromDef));
+    const fish = new FishSystem(catalog.fish);
     await fish.init(flow, seed);
     const grassDensity = valley.grassDensity ?? new Float32Array(valley.heightfield.size ** 2);
     valley.grassDensity = grassDensity;
@@ -310,30 +323,44 @@ export class World {
       quality: options.quality,
       clock,
     });
-    const barb = fish.speciesIndex('denison-barb');
-    const riffles = valley.profile.zones.find((z) => z.name === 'riffles');
-    if (riffles && barb >= 0) {
-      const at = [0.35, 0.5, 0.65];
-      for (let k = 0; k < at.length; k++) {
-        const i = Math.round(riffles.start + (riffles.end - riffles.start) * (at[k] as number));
-        const x = valley.path.points[i * 2] as number;
-        const z = valley.path.points[i * 2 + 1] as number;
-        await fish.release(barb, x, z, 18, 2.5, k + 1);
+    // Every species starts where it lives (plan 6.5): barbs in the riffles, loaches in the rapids, mahseer in the pool,
+    // minnows and danios along the bend's calm margins, koi in the pond.
+    let schoolId = 1;
+    for (const start of STARTING_FISH) {
+      const index = fish.speciesIndex(start.id);
+      if (index < 0) continue;
+      for (let k = 0; k < start.schools; k++) {
+        const spot = world.findFishSpot(index, start.zone, (k + 0.5) / start.schools);
+        if (!spot) continue;
+        const placed = await fish.release(
+          index,
+          spot.x,
+          spot.z,
+          start.count,
+          1.5 + Math.sqrt(start.count) * 0.3,
+          schoolId,
+        );
+        if (placed === 0) continue;
         const item: PlacedItem = {
-          uid: generatedUid('fish', k),
+          uid: generatedUid('fish', schoolId - 1),
           category: 'fish',
-          kind: 'denison-barb',
+          kind: start.id,
           variant: 0,
-          x,
-          y: heightAt(x, z),
-          z,
+          x: spot.x,
+          y: heightAt(spot.x, spot.z),
+          z: spot.z,
           yaw: 0,
           scale: 1,
-          count: 18,
+          count: start.count,
         };
-        world.items.registerSchool(item, k + 1);
+        world.items.registerSchool(item, schoolId);
+        schoolId++;
       }
     }
+    fish.onRise = (x, z, length) => {
+      const surface = flow.surfaceAt(x, z);
+      if (surface !== null) world.waterFx.splash(x, surface, z, 0.03 + Math.min(0.5, length * 0.6));
+    };
     if (options.restore) {
       progress('Putting your valley back', 0.91);
       await world.restore(options.restore);
@@ -409,6 +436,118 @@ export class World {
     if (s.water.speed !== this.flow.speedMultiplier) await this.flow.setSpeedMultiplier(s.water.speed);
     if (s.water.level !== this.flow.levelOffset) await this.flow.setLevelOffset(s.water.level);
     this.plants.invalidate();
+  }
+
+  /**
+   * A spot in a stream zone (or the pond) whose water suits a fish species: right depth and current. `at` picks how
+   * far along the zone to start looking (0..1).
+   */
+  findFishSpot(speciesIndex: number, zone: string, at = 0.5): { x: number; z: number } | null {
+    const b = this.fish.behaviors[speciesIndex];
+    if (!b) return null;
+    const h = b.habitat;
+    const ok = (x: number, z: number) => {
+      const s = this.flow.sample(x, z);
+      if (!s || s.depth < b.minDepth) return false;
+      if (b.pondOnly && !s.pond) return false;
+      if (!h) return true;
+      const speed = Math.hypot(s.velocityX, s.velocityZ);
+      return s.depth >= h.depth[0] && s.depth <= h.depth[1] && speed >= h.flow[0] && speed <= h.flow[1];
+    };
+    if (zone === 'pond' || b.pondOnly) {
+      const p = this.valley.pond;
+      for (let r = 0; r <= p.radius; r += 1.5)
+        for (let a = 0; a < Math.PI * 2; a += 0.5) {
+          const x = p.x + Math.cos(a + at * 6) * r;
+          const z = p.z + Math.sin(a + at * 6) * r;
+          if (ok(x, z)) return { x, z };
+        }
+      return null;
+    }
+    const zz = this.valley.profile.zones.find((q) => q.name === zone);
+    if (!zz) return null;
+    const path = this.flow.path;
+    const span = zz.end - zz.start;
+    for (let step = 0; step < span; step += 4) {
+      // Search outward from the chosen point, alternating up and downstream.
+      for (const dir of [1, -1]) {
+        const i = Math.round(zz.start + span * at + dir * step);
+        if (i < zz.start || i > zz.end) continue;
+        const hw = (this.valley.profile.halfWidth[i] as number) ?? 5;
+        for (let k = 0; k <= 8; k++) {
+          const off = (k % 2 ? -1 : 1) * Math.ceil(k / 2) * (hw / 4.5);
+          const x = (path.points[i * 2] as number) + (path.normals[i * 2] as number) * off;
+          const z = (path.points[i * 2 + 1] as number) + (path.normals[i * 2 + 1] as number) * off;
+          if (ok(x, z)) return { x, z };
+        }
+      }
+    }
+    return null;
+  }
+
+  // --- Fish: food and following ------------------------------------------------------------------------------------
+
+  /** Throws a little food onto the water ahead of you (Explore: F); fish nearby gather, koi come from afar. */
+  throwFood(): boolean {
+    const cam = this.engine.camera;
+    const dir = new THREE.Vector3();
+    cam.getWorldDirection(dir);
+    dir.y = 0;
+    if (dir.lengthSq() < 1e-6) return false;
+    dir.normalize();
+    for (let d = 1.5; d <= 9; d += 0.5) {
+      const x = cam.position.x + dir.x * d;
+      const z = cam.position.z + dir.z * d;
+      const surface = this.flow.surfaceAt(x, z);
+      if (surface === null) continue;
+      void this.fish.throwFood(x, surface, z);
+      this.waterFx.splash(x, surface, z, 0.12);
+      return true;
+    }
+    return false;
+  }
+
+  private following: number | null = null;
+  private followFrom: CameraMode = 'explore';
+  private readonly followPos = new THREE.Vector3();
+
+  /** Follows a fish with the camera (plan 6.5: inspect / follow). */
+  followFish(id: number): void {
+    if (this.mode !== 'follow') this.followFrom = this.mode;
+    this.following = id;
+    const f = this.fish.get(id);
+    if (f) this.followPos.set(f.x, f.y, f.z);
+    this.setMode('follow');
+  }
+
+  stopFollowing(): void {
+    this.following = null;
+    if (this.mode === 'follow') this.setMode(this.followFrom === 'follow' ? 'explore' : this.followFrom);
+  }
+
+  get followedFish(): number | null {
+    return this.mode === 'follow' ? this.following : null;
+  }
+
+  private updateFollow(dt: number): void {
+    const f = this.following === null ? null : this.fish.get(this.following);
+    if (!f) {
+      this.stopFollowing();
+      return;
+    }
+    const cam = this.engine.camera;
+    // Behind and a little to the side of the fish, a few body lengths back, looking at it.
+    const dist = Math.max(0.35, f.length * 4.5);
+    const hx = Math.sin(f.yaw);
+    const hz = Math.cos(f.yaw);
+    this.followPos.lerp(new THREE.Vector3(f.x, f.y, f.z), Math.min(1, dt * 6));
+    const target = new THREE.Vector3(
+      this.followPos.x - hx * dist + hz * dist * 0.45,
+      this.followPos.y + dist * 0.25,
+      this.followPos.z - hz * dist - hx * dist * 0.45,
+    );
+    cam.position.lerp(target, Math.min(1, dt * 3));
+    cam.lookAt(this.followPos);
   }
 
   // --- Modes ---------------------------------------------------------------------------------------------------
@@ -584,6 +723,7 @@ export class World {
     this.flow.update(windTime);
     if (this.mode === 'explore') this.player.update(info.dt, this.input, camera);
     else if (this.mode === 'builder') this.builderCamera.update(info.dt, this.input, camera, !this.wheelCaptured);
+    else if (this.mode === 'follow') this.updateFollow(info.dt);
     this.physics.step(info.dt);
     this.items.update(info.dt);
 
@@ -614,6 +754,7 @@ export class World {
     const sunLight = this.sky.sun.intensity / this.sky.sunStrength;
     globals.sunLight.value = sunLight;
     (globals.sunColor.value as THREE.Color).copy(this.sky.sun.color);
+    (globals.sunDirection.value as THREE.Vector3).copy(sun);
     (this.flow.look.light as any).value = 0.08 + sunLight * 0.9 + this.sky.hemi.intensity * 0.6;
     // Underwater whenever the camera itself is below the water surface (any camera mode).
     const surface = this.flow.surfaceAt(camera.position.x, camera.position.z);
@@ -671,7 +812,7 @@ export class World {
       (x, z) => windVelocityAt(this.windState, x, z, windTime),
       (x, z) => this.flow.surfaceAt(x, z) ?? this.heightAt(x, z),
     );
-    this.fish.update(info.dt, this.player.position);
+    this.fish.update(info.dt, this.player.position, this.clock.dayOfYear, this.clock.hour);
     const focus =
       this.mode === 'builder'
         ? new THREE.Vector3(this.builderCamera.goal.x, 0, this.builderCamera.goal.z)

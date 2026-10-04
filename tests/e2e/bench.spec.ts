@@ -41,3 +41,12 @@ test('storm-wind flythrough stays within the budget (Phase 3)', async ({ page })
   expect(result.drawCallsMax).toBeLessThanOrEqual(1500);
   expect(result.hitches).toBeLessThanOrEqual(2);
 });
+
+test('500 fish stay within the budget (Phase 5)', async ({ page }) => {
+  test.setTimeout(240_000);
+  const result = await fly(page, 'fish');
+  expect(result.fish).toBeGreaterThanOrEqual(480);
+  expect(result.fpsAvg).toBeGreaterThan(45);
+  expect(result.gpuMsAvg).toBeLessThan(22);
+  expect(result.drawCallsMax).toBeLessThanOrEqual(1500);
+});

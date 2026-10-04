@@ -2,6 +2,7 @@ import * as THREE from 'three/webgpu';
 import * as Comlink from 'comlink';
 import { uniform, uv, vec3, vec4, float, mx_noise_float, smoothstep, mix, texture, attribute } from 'three/tsl';
 import type { Valley } from '../../sim/terrain/valley';
+import { sampleHeight } from '../../sim/terrain/heightfield';
 import { buildRiverPath, buildPathLookup, worldToStream, type RiverPath, type PathLookup } from '../../sim/flow/path';
 import type { Stone, SolveStats, SideInflow } from '../../sim/flow/field';
 import { DoubleBuffer } from '../../sim/shared/doubleBuffer';
@@ -19,6 +20,8 @@ export interface FlowSample {
   foam: number;
   shelter: number;
   bed: number;
+  /** True in the still backwater pond. */
+  pond?: boolean;
 }
 
 const CELLS_ACROSS = 49;
@@ -117,6 +120,7 @@ export class FlowSystem {
       controls: this.valley.controls,
       bounds: { minX: -half, minZ: -half, maxX: half, maxZ: half },
       pond: { x: pond.x, z: pond.z, radius: pond.radius, section: pond.section },
+      pondBed: this.pondBedGrid(),
     };
     this.sampler = new SharedFlowSampler(this.config);
     this.lastStats = result.stats;
@@ -130,6 +134,21 @@ export class FlowSystem {
     this.buildMeshes();
     this.pull(true);
     if (stones.length) await this.setStones(stones);
+  }
+
+  /** Bed heights over the pond at 0.5 m, for the shared sampler (fish need pond water too). */
+  private pondBedGrid(): { originX: number; originZ: number; cell: number; size: number; heights: Float32Array } {
+    const pond = this.valley.pond;
+    const cell = 0.5;
+    const half = pond.radius + 8;
+    const size = Math.ceil((half * 2) / cell) + 1;
+    const originX = pond.x - half;
+    const originZ = pond.z - half;
+    const heights = new Float32Array(size * size);
+    for (let j = 0; j < size; j++)
+      for (let i = 0; i < size; i++)
+        heights[j * size + i] = sampleHeight(this.valley.heightfield, originX + i * cell, originZ + j * cell);
+    return { originX, originZ, cell, size, heights };
   }
 
   /** Copies new results from shared memory into textures and meshes (call every frame; cheap when unchanged). */

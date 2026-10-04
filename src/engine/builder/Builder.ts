@@ -8,7 +8,7 @@ import { UndoStack, SetValueCommand, BatchCommand, type Command } from '../../bu
 import { checkPlacement, type PlacementResult } from '../../builder/placement';
 import { newUid, type ItemCategory, type ItemTransform, type PlacedItem, type Spring } from '../../builder/editLayer';
 import { scatterDab, itemsInCircle } from '../../builder/brush';
-import type { Ray } from '../../builder/picking';
+import { pickNearest, rayHeight, type Ray } from '../../builder/picking';
 import { getSetting, withSetting, type ValleySettings } from '../../state/settings';
 import { encodeSave } from '../../save/saveData';
 import { previewFor } from './previews';
@@ -258,6 +258,11 @@ export class Builder {
     return { ox: origin.x, oy: origin.y, oz: origin.z, dx: _v.x, dy: _v.y, dz: _v.z };
   }
 
+  private canvasCenter(): [number, number] {
+    const rect = this.canvas.getBoundingClientRect();
+    return [rect.left + rect.width / 2, rect.top + rect.height / 2];
+  }
+
   private overCanvas(clientX: number, clientY: number): boolean {
     return document.elementFromPoint(clientX, clientY) === this.canvas;
   }
@@ -449,6 +454,49 @@ export class Builder {
     if (!item || !result?.ok) return result;
     await this.place(item, { x, z }, result, this.rng.range(0, Math.PI * 2), 1, result.host ?? null);
     return result;
+  }
+
+  // --- Fish: inspect, follow, food ------------------------------------------------------------------------------------
+
+  /** The fish a ray hits before the ground or water (within 40 m), or null. */
+  private pickFish(ray: Ray): number | null {
+    const ground = rayHeight(ray, (x, z) => this.world.heightAt(x, z), 400);
+    const hit = pickNearest(ray, this.world.fish.pickShapes(), Math.min(40, ground?.t ?? 40));
+    return hit ? Number(hit.uid.slice('fish:'.length)) : null;
+  }
+
+  /** Opens the fish card for a fish (plan 6.5). */
+  async inspectFish(id: number): Promise<void> {
+    const d = await this.world.fish.inspect(id);
+    if (!d) {
+      useUi.getState().set({ inspect: null });
+      return;
+    }
+    const def = this.world.fish.defs[d.species];
+    useUi.getState().set({
+      inspect: {
+        id,
+        name: def?.name ?? 'Fish',
+        lengthCm: d.length * 100,
+        age: d.age,
+        genes: d.genes,
+        following: this.world.followedFish === id,
+      },
+    });
+  }
+
+  closeInspect(): void {
+    if (this.world.mode === 'follow') this.world.stopFollowing();
+    useUi.getState().set({ inspect: null });
+  }
+
+  /** Follows (or stops following) the inspected fish. */
+  toggleFollow(): void {
+    const info = useUi.getState().inspect;
+    if (!info) return;
+    if (this.world.followedFish === info.id) this.world.stopFollowing();
+    else this.world.followFish(info.id);
+    useUi.getState().set({ inspect: { ...info, following: this.world.followedFish === info.id } });
   }
 
   // --- Selection and the gizmo ---------------------------------------------------------------------------------
@@ -755,6 +803,11 @@ export class Builder {
     const tool = useUi.getState().tool;
     const ray = this.rayAt(e.clientX, e.clientY);
     if (tool === 'select') {
+      const fishId = this.pickFish(ray);
+      if (fishId !== null) {
+        void this.inspectFish(fishId);
+        return;
+      }
       const hit = this.world.items.raycast(ray, SELECTABLE);
       const current = useUi.getState().selection.map((s) => s.uid);
       if (!hit.item) this.select(e.shiftKey ? current : []);
@@ -773,7 +826,25 @@ export class Builder {
       return;
     if (e.code === 'Tab' && !e.ctrlKey && !e.altKey) {
       e.preventDefault();
+      if (this.world.mode === 'follow') this.world.stopFollowing();
       this.setMode(this.world.mode === 'builder' ? 'explore' : 'builder');
+      return;
+    }
+    if (this.world.mode === 'follow' && e.code === 'Escape') {
+      this.world.stopFollowing();
+      const info = useUi.getState().inspect;
+      if (info) useUi.getState().set({ inspect: { ...info, following: false } });
+      return;
+    }
+    if (this.world.mode === 'explore') {
+      if (e.code === 'KeyF') {
+        if (!this.world.throwFood()) useUi.getState().toast('Walk up to the water to throw food');
+      } else if (e.code === 'KeyE') {
+        // The fish in the middle of your view.
+        const id = this.pickFish(this.rayAt(...this.canvasCenter()));
+        if (id !== null) void this.inspectFish(id);
+        else useUi.getState().set({ inspect: null });
+      }
       return;
     }
     if (this.world.mode !== 'builder') return;

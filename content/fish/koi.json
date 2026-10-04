@@ -1,0 +1,45 @@
+{
+  "id": "koi",
+  "name": "Koi",
+  "plural": "Koi",
+  "description": "Long, graceful pond fish in red, white, black and gold, with flowing fins. They glide slowly in the backwater pond and come to you for food.",
+  "category": "fish",
+  "body": { "template": "long", "fins": "flowing", "length": [0.4, 0.8], "barbels": true },
+  "pattern": {
+    "kind": "koi",
+    "back": "#f4f0e8",
+    "flank": "#f4f0e8",
+    "belly": "#f8f6f0",
+    "accent": "#d8381c",
+    "accent2": "#141414",
+    "fin": "#f2ece0",
+    "finTip": "#e86a3a",
+    "metal": 0.3,
+    "iridescence": 0.15
+  },
+  "behavior": {
+    "cruise": 0.35,
+    "burst": 1.6,
+    "comfortCurrent": 0.12,
+    "depthPreference": 0.55,
+    "schooling": { "separation": 1, "alignment": 0.3, "cohesion": 0.25, "radius": 5 },
+    "shyness": 0.2,
+    "rheotaxis": 0.4,
+    "glides": true,
+    "curiosity": 0.85
+  },
+  "habitat": { "depth": [0.4, 3], "flow": [0, 0.15], "temperature": [8, 30], "oxygenMin": 4, "pondOnly": true },
+  "diet": ["plants", "insects", "detritus"],
+  "spawning": { "seasons": ["spring"], "ground": "pond" },
+  "life": { "maturityYears": 3, "lifespanYears": 40, "fecundity": 20 },
+  "genes": {
+    "bodySize": { "mean": 0.5, "sd": 0.12 },
+    "swimStrength": { "mean": 0.45, "sd": 0.1 },
+    "preferredFlow": { "mean": 0.3, "sd": 0.1 },
+    "brightness": { "mean": 0.8, "sd": 0.08 },
+    "shyness": { "mean": 0.2, "sd": 0.1 },
+    "heritability": 0.4,
+    "mutation": 0.02
+  },
+  "school": { "size": 6, "max": 20 }
+}

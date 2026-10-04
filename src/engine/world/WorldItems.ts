@@ -221,13 +221,14 @@ export class WorldItems {
     const day = clock.dayOfYear;
     if (s && s.depth > 0.01) {
       const speed = Math.hypot(s.velocityX, s.velocityZ);
+      const pond = s.pond === true;
       water = {
         depth: s.depth,
         speed,
         surface: s.surface,
         bed: s.bed,
-        temperature: waterTemperature({ dayOfYear: day, hour, speed, depth: s.depth }),
-        pond: false,
+        temperature: waterTemperature({ dayOfYear: day, hour, speed, depth: s.depth, pond }),
+        pond,
       };
     } else {
       const pond = valley.pond;

@@ -41,6 +41,18 @@ export interface SelectedInfo {
   name: string;
 }
 
+/** The fish card (plan 6.5: click a fish to see its species, age, size and traits). */
+export interface FishInfo {
+  id: number;
+  name: string;
+  /** Body length, cm. */
+  lengthCm: number;
+  /** Years. */
+  age: number;
+  genes: { bodySize: number; swimStrength: number; preferredFlow: number; brightness: number; shyness: number };
+  following: boolean;
+}
+
 export interface UiState {
   mode: AppMode;
   tool: BuilderTool;
@@ -62,6 +74,7 @@ export interface UiState {
   toasts: Toast[];
   clock: ClockSnapshot;
   busy: string | null;
+  inspect: FishInfo | null;
   set: (partial: Partial<UiState>) => void;
   toast: (text: string, kind?: Toast['kind']) => void;
   dismiss: (id: number) => void;
@@ -89,6 +102,7 @@ export const useUi = create<UiState>((set) => ({
   toasts: [],
   clock: { hour: 8, day: 95, season: 'spring', year: 0 },
   busy: null,
+  inspect: null,
   set: (partial) => set(partial),
   toast: (text, kind = 'info') => {
     const id = toastId++;

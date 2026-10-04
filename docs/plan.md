@@ -54,7 +54,7 @@ on your PC later. This section is updated at the end of every phase; each phase 
 | 2 — Living water | M1 | **Done** (P10–P12 open) | Flow solver in a worker, river/pond/waterfall water with flow-map ripples, refraction, foam, caustics, wading and swimming, debris, first barb school; 54.6 fps |
 | 3 — Wind and vegetation | M2 | **Code done** (G1–G4 pending) | One wind state for every consumer, tree ferns, ferns, wildflowers and orchids, six water plants placed by depth and current, grass that bends away from you, falling petals, leaves and pollen, waterfall spray and mist, season looks; e2e and storm benchmark written. Not seen on screen yet |
 | 4 — Builder | M2 | **Code done** (G5–G6 pending) | UI shell and start screen (continue, open a file), builder camera, catalog with live thumbnails, drag and drop with a ghost and placement reasons, stones that fall and settle with Rapier, scatter/eraser/grass brushes, springs, gizmo and multi-select, 100-step undo/redo, Water/Wind/Trees/Time & weather panels, flow and depth/speed overlays, OPFS autosave and `.riffle` files. Not seen on screen yet |
-| 5 — Fish | M3 | Not started | |
+| 5 — Fish | M3 | **Code done** (G7–G10 pending) | All six species from content files with their own bodies, fins and patterns (stripes, pearl spots, leopard spots, koi patches, gold metallic scales, a shining lateral line), iridescence and backlit fins; genes per fish; habitat seeking, loaches clinging in the rapids, rises to insects, food, curiosity, night rest, koi gliding; the pond for koi; inspect and follow; a 500-fish benchmark. Not seen on screen yet |
 | 6 — Ecosystem and evolution | M3 | Not started | |
 | 7 — Spatial nature audio | M4 | Not started | |
 | 8 — Photo mode and time-lapse | M4 | Not started | |
@@ -79,9 +79,11 @@ on your PC later. This section is updated at the end of every phase; each phase 
 | P13 | **The Workshop page and `pnpm bake` (D31)**: decided in Phase 4 that nothing needs them. Erosion runs on the CPU (C8), lite trees stand in for impostors (C10), and catalog thumbnails are rendered live in the app and cached in the browser (C19). The `bake` script was removed (C20). | — | Phase 3 | **Closed** |
 | P14 | **The Phase 3 code hasn't been seen on screen.** It was written, type-checked and unit-tested, but the visual checks were stopped. Reading the code at the handoff found one bug (the plants and air particles were never added to the scene; fixed). Expect a few more fixes after G1. | You (G1), then the cloud session | Phase 3 | Open |
 | P15 | **The builder hasn't been seen on screen** (cloud session, no GPU). Most likely to need a fix after G6: the gizmo (three's `TransformControls` on WebGPU), the thumbnail orientation and lighting (read back from a render target), the overlay drape's texture orientation, and the ghost ring height. The logic behind them (undo, placement rules, edit layer, saving, picking, brushes) is unit-tested. | You (G5, G6), then a session with the fixes | Phase 4 | Open |
-| P16 | **Fish schools can be released but not selected or moved** in the builder; inspecting and following a fish comes with Phase 5. | Me | Phase 4 | Open (Phase 5) |
+| P16 | **Fish schools can be released but not selected or moved** in the builder. Phase 5 added inspecting and following a single fish (click it in Build, E in Explore); schools stay unmovable on purpose (fish move themselves). | — | Phase 4 | **Closed** (Phase 5) |
 | P17 | **Springs (side brooks) add their water to the stream and bubble where they join**, but there is no visible brook channel running down the bank. | Me | Phase 4 | Open (Phase 9) |
 | P18 | **Weather "Follow the seasons"** gives each season its sky, haze and dawn mist; the choices in the Time & weather panel set clear, overcast, mist, rain, downpour or storm skies. Rain falling, rain rings, wet surfaces and rain raising the discharge come with Phase 6's weather. | Me | Phase 4 | Open (Phase 6) |
+| P19 | **The fish haven't been seen on screen.** Most likely to need tuning after G9: pattern scales on each body (spot sizes, stripe widths), fin transparency and the backlight, the banked-turn roll, iridescence strength, and koi pattern variety. | You (G9), then a session with the fixes | Phase 5 | Open |
+| P20 | **GPU minnow and danio schools** (the plan's optional thousands of fish on compute shaders) are not built; all fish are CPU agents (up to 2,000 in the shared buffer). | Me | Phase 5 | Open (optional) |
 
 ### Changes from the plan made during implementation
 
@@ -109,6 +111,7 @@ on your PC later. This section is updated at the end of every phase; each phase 
 | C20 | A Workshop page and `pnpm bake` for GPU jobs (D31) | None: terrain erosion on the CPU (C8), lite trees (C10), live thumbnails (C19); the `bake` script is gone | Nothing needs a GPU bake; fewer steps for a fresh clone |
 | C21 | Picking with three-mesh-bvh | Analytic picking: rays against the height map, the water surface, ellipsoids (stones) and cylinders (trees, plants) in pure TypeScript (`src/builder/picking.ts`) | Instanced items aren't Object3Ds; analytic shapes are simpler, fast and unit-tested |
 | C22 | Fish placement checks water temperature from the ecology grids | A water-temperature model (`src/sim/ecology/temperature.ts`): seasons, the daily swing, lag behind the air, cooler fast or shaded water, a warmer pond | The ecology grids arrive in Phase 6; the same model feeds them |
+| C23 | One instanced mesh per body template | One per species: each has its own fins (forked, flowing, rounded, suction), barbels and pattern shader | Each species' pattern compiles to its own small shader instead of one big branching one |
 
 ### Local GPU checks (run on your PC)
 
@@ -124,6 +127,10 @@ wait for P1/P2. Commands assume `pnpm dev` is running, except the benchmark (`pn
 | G4 | **Benchmarks**, 20 s each: the valley and the storm-wind flights stay within the budget at 1080p High, ≤ 1,500 draw calls, no more than 2 hitches in the storm | `pnpm bench` (runs both flights) | 3 | Open (test written) |
 | G5 | **Phase 4 e2e** (`tests/e2e/builder.spec.ts`): drag a boulder from the catalog into the riffles (it settles on the bed, undo and redo work); dragging lotus over fast water shows "Lotus needs still water…" and places nothing; every catalog item finds a valid spot and is placed (Java fern on a stone); the wind slider changes the world live; 100 undo and redo steps; save → close → reopen from the autosave, and save → open from a file, restore the valley exactly | `pnpm test:e2e tests/e2e/builder.spec.ts` | 4 | Open (tests written) |
 | G6 | **First look at the builder** (a few minutes by hand, `pnpm dev`): Tab into Build; catalog thumbnails are upright and lit; dragging a card shows the real item under the cursor with a green or red ring and a reason; a boulder dropped in the stream splashes, settles and a wake forms; click selects (yellow ring), the gizmo moves, turns and scales (1/2/3), Delete removes; scatter, erase and grass brushes; spring tool bubbles on a bank; flow arrows follow the stream and the depth/speed drape lines up with the water; every panel slider changes the world; Valley ▾ → Save/Open; reload offers "Continue where you left off" | Manual, `pnpm dev` | 4 | Open |
+| G7 | **Phase 5 e2e** (`tests/e2e/fish.spec.ts`): all six species are in the valley and every fish is in the water (koi in the pond); barbs and loaches face upstream in moving water; koi gather at food thrown across the pond within 25 s; mahseer keep to deep or sheltered water; a fish can be inspected and followed | `pnpm test:e2e tests/e2e/fish.spec.ts` | 5 | Open (tests written) |
+| G8 | **500 fish within the budget**: the `fish` flight tops the valley up to about 500 fish and checks fps, GPU time and draw calls | `pnpm bench` (third flight) | 5 | Open (test written) |
+| G9 | **First look at the fish**, side by side with reference photos (P6) when you have them: each species recognizable (gold mahseer with reddish fins, barb's red-over-black stripe, minnow's gold line and red fins, danio pearls and orange fins, leopard loach clinging flat to rocks, koi patches and long fins), elegant in motion (wave, banked turns, koi gliding, fins rippling), fins glowing against the sun | `npx tsx tools/views.ts test-results/p5`, then `pnpm dev`: E on a fish, Follow; F at the pond | 5 | Open |
+| G10 | **10-minute fish soak** in the browser: no fish leaves the water (the same check runs in Node in `tests/unit/fish.test.ts`) | A long GPU run: waits for P1 | 5 | Open (after P1) |
 
 ### Handoff to the cloud session
 
@@ -1080,6 +1087,40 @@ dropping a school into the water, inspect/follow, and optionally GPU minnow and 
 **Done when:** each species is recognizable in a side-by-side check against reference photos and looks elegant in
 motion; 500 fish stay within the budget; no fish leaves the water in a 10-minute soak test; barbs and loaches visibly
 hold in currents, mahseer gather behind boulders and koi come to thrown food.
+
+**Built (2026-10-04, cloud session; code done, not seen on screen yet, see P19 and G7–G10):**
+- **Six species as content** (`content/fish/`): golden mahseer, Denison barb, white cloud minnow, celestial pearl
+  danio, hillstream loach and koi, each with body template, fin shape, barbels, size range, palette and pattern kind,
+  behavior, habitat (depth, current, temperature, oxygen), diet, spawning, life history and starting genes. Adding a
+  species is a JSON file (`src/sim/boids/species.ts` turns it into school behavior).
+- **Fish generator** (`src/procgen/fish.ts`): torpedo, deep, long and flat bodies; fins built as membranes between a
+  base on the body and an edge, in rows so long fins bend smoothly: forked tails, long flowing koi fins, rounded
+  danio fins, and the loach's flat suction fins spread to the sides; barbels on koi and mahseer. A fin coordinate
+  (`aFin`) drives flutter, ripples, bars and see-through edges.
+- **Pattern and swim shader** (`src/engine/fauna/fishMaterial.ts`, one per species, C23): the barb's red line over a
+  black stripe and yellow-and-black tail, the danio's pearl spots, orange belly and barred fins, the loach's leopard
+  blotches and saddle bands, koi patches seeded per fish (Kohaku, Sanke with sumi, Showa, metallic gold Ogon), the
+  mahseer's big metallic scales with dark edges, the minnow's shining gold line. A brightness gene makes each fish
+  more vivid or more muted. Thin-film iridescence on the flanks (physical material), metallic scales, and fins that
+  glow when the sun shines through them. Motion: a travelling wave scaled by the tail beat (koi glide between
+  strokes), turns that bend and bank the body, fluttering paired fins and median fins rippling and trailing.
+- **School behavior** (`src/sim/boids/school.ts`): genes per fish (body size, swim strength, preferred flow,
+  brightness, shyness) shape its size, strength, the current it likes and how shy it is; every species seeks water of
+  its depth, current and temperature (using the temperature model); loaches cling to the bed in fast water (the current
+  can't move them), face straight into it and dart between rocks; fish rise to drifting insects at dawn and dusk (a
+  small splash), gather at thrown food (koi from across the pond, rising to the surface), come closer when you stand
+  still, flee sudden movement, and rest near the bottom at night; koi glide between strokes.
+- **Pond water for fish**: the shared flow sampler now covers the still pond (a small grid of its bed heights), so koi
+  live there and never leave it.
+- **In the world**: every species starts in its own water (barbs in the riffles, loaches in the rapids, mahseer in the
+  pool, minnows and danios along the bend, koi in the pond); the builder releases schools by the placement rules;
+  **F** throws food onto the water ahead of you; **E** (Explore) or a click (Build) opens the **fish card** (species,
+  size, age, the five traits) with **Follow**, a camera that trails the fish.
+- **Tests**: 86 unit tests (+9: every species stays in the water for 10 simulated minutes, loaches cling and hold,
+  mahseer find calm water behind a boulder, koi come to food, curious koi approach, night rest, habitat seeking, the
+  swim-strength gene) and e2e `tests/e2e/fish.spec.ts` (G7); a 500-fish benchmark flight (G8).
+- **Not met yet**: the side-by-side look against reference photos (G9, P6) and the 10-minute soak in the browser (G10,
+  after P1). GPU schools are not built (P20).
 
 ### Phase 6 — Ecosystem and evolution (XL)
 

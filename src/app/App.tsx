@@ -12,6 +12,7 @@ import { LoadingScreen } from './LoadingScreen';
 import { DevPanel } from './DevPanel';
 import { TopBar } from './shell/TopBar';
 import { PlacementHint, Toasts, Legend } from './shell/Overlays';
+import { FishCard } from './shell/FishCard';
 import { CatalogPanel } from './builder/CatalogPanel';
 import { Toolbar } from './builder/Toolbar';
 import { ControlPanel } from './panels/ControlPanel';
@@ -353,12 +354,14 @@ export function App({ adapterInfo }: { adapterInfo: string }) {
               <PlacementHint />
             </>
           )}
+          <FishCard builder={builder} />
           <Toasts />
         </>
       )}
       {world && mode === 'explore' && !locked && ui && !loading && (
         <div className="explore-hint">
-          Click to look around · WASD to walk · Shift to run · Space to jump · Tab to build · Esc to release
+          Click to look around · WASD to walk · Shift to run · Space to jump · F to throw food · E to look at a fish ·
+          Tab to build · Esc to release
         </div>
       )}
       {error && (
