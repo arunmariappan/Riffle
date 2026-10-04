@@ -128,7 +128,12 @@ export function createPipeline(
   // Underwater: distance fog toward the water color, plus a slight blue-green shift.
   const distance = scenePass.getViewZNode().negate();
   const fogAmount = float(1).sub(exp(distance.negate().div(c.underwaterVisibility)));
-  const underwaterColor = mix(graded.rgb.mul(vec3(0.7, 0.95, 0.92)), vec3(c.underwaterColor), fogAmount);
+  // Underwater the light also loses red quickly; fog takes over within a few meters.
+  const underwaterColor = mix(
+    graded.rgb.mul(vec3(0.45, 0.85, 0.8)),
+    vec3(c.underwaterColor),
+    fogAmount.mul(1.15).min(1),
+  );
   graded = vec4(mix(graded.rgb, underwaterColor, c.underwater), graded.a);
 
   // Grading: contrast around mid grey, saturation, tint, gentle vignette (plan 8: "grading stays real").

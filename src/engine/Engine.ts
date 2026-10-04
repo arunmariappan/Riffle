@@ -51,11 +51,17 @@ export class Engine {
   }
 
   static async create(canvas: HTMLCanvasElement): Promise<Engine> {
+    // The terrain shader samples many textures (layers, masks, water level, shadow cascades, sky light): ask for
+    // more than WebGPU's default of 16 per stage when the hardware allows it (this card supports 48).
+    const adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
+    const sampled = Math.min(32, adapter?.limits.maxSampledTexturesPerShaderStage ?? 16);
+    const samplers = Math.min(32, adapter?.limits.maxSamplersPerShaderStage ?? 16);
     const renderer = new THREE.WebGPURenderer({
       canvas,
       antialias: false,
       powerPreference: 'high-performance',
       trackTimestamp: true,
+      requiredLimits: { maxSampledTexturesPerShaderStage: sampled, maxSamplersPerShaderStage: samplers },
     });
     await renderer.init();
     renderer.toneMapping = THREE.AgXToneMapping;

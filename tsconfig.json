@@ -16,5 +16,5 @@
     "noEmit": true,
     "types": ["vite/client", "@webgpu/types"]
   },
-  "include": ["src", "tests/unit"]
+  "include": ["src"]
 }

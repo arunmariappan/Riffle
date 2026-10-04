@@ -13,7 +13,14 @@ import { Atmosphere } from '../sky/Atmosphere';
 import { createWindUniforms, type WindUniforms } from '../vegetation/wind';
 import { TreeSystem } from '../vegetation/TreeSystem';
 import { GrassSystem } from '../vegetation/GrassSystem';
-import { RockSystem } from './RockSystem';
+import { RockSystem, setRockWaterLevel, type PlacedStone } from './RockSystem';
+import { FlowSystem } from '../water/FlowSystem';
+import { Debris } from '../water/Debris';
+import { FishSystem } from '../fauna/FishSystem';
+import { DENISON_BARB } from '../../sim/boids/school';
+import { DENISON_PATTERN } from '../fauna/fishMaterial';
+import { globals } from '../globals';
+import type { Stone } from '../../sim/flow/field';
 import { Physics } from '../physics/Physics';
 import { ExplorePlayer } from '../player/ExplorePlayer';
 import { Input } from '../player/Input';
@@ -56,6 +63,9 @@ export class World {
   readonly trees: TreeSystem;
   readonly grass: GrassSystem;
   readonly rocks: RockSystem;
+  readonly flow: FlowSystem;
+  readonly debris: Debris;
+  readonly fish: FishSystem;
   readonly physics: Physics;
   readonly player: ExplorePlayer;
   readonly input: Input;
@@ -74,6 +84,8 @@ export class World {
     trees: TreeSystem;
     grass: GrassSystem;
     rocks: RockSystem;
+    flow: FlowSystem;
+    fish: FishSystem;
     wind: WindUniforms;
     quality: QualityPreset;
     clock: SimClock;
@@ -85,6 +97,9 @@ export class World {
     this.trees = parts.trees;
     this.grass = parts.grass;
     this.rocks = parts.rocks;
+    this.flow = parts.flow;
+    this.debris = new Debris(this.flow);
+    this.fish = parts.fish;
     this.wind = parts.wind;
     this.quality = parts.quality;
     this.clock = parts.clock;
@@ -92,7 +107,15 @@ export class World {
     camera.near = 0.08;
     camera.far = 30000;
     camera.updateProjectionMatrix();
-    scene.add(this.terrain.group, this.trees.group, this.grass.group, this.rocks.group);
+    scene.add(
+      this.terrain.group,
+      this.trees.group,
+      this.grass.group,
+      this.rocks.group,
+      this.flow.group,
+      this.debris.mesh,
+      this.fish.group,
+    );
     this.sky = new SkySystem(renderer, scene, camera, 260);
     this.sky.sky.material.fog = false;
     this.atmosphere = new Atmosphere(scene);
@@ -103,7 +126,15 @@ export class World {
     this.input = new Input(renderer.domElement);
     const start = this.valley.spots.find((s) => s.name === 'riffles') ?? (this.valley.spots[0] as Spot);
     this.player = new ExplorePlayer(this.physics, new THREE.Vector3(start.x, this.heightAt(start.x, start.z), start.z));
+    this.player.setWater(this.flow);
     this.lookFrom(start);
+  }
+
+  /** In-stream stones as flow obstacles (top height above the bed, sunk part excluded). */
+  static stonesForFlow(stones: readonly PlacedStone[]): Stone[] {
+    return stones
+      .filter((s) => s.radius >= 0.25)
+      .map((s) => ({ id: s.id, x: s.x, z: s.z, radius: s.radius, height: s.height * 0.8 }));
   }
 
   static async create(engine: Engine, options: WorldOptions): Promise<World> {
@@ -128,7 +159,9 @@ export class World {
 
     progress('Laying the ground', 0.52);
     const physics = await Physics.create(valley.heightfield);
-    const terrain = new TerrainSystem(valley);
+    const flow = new FlowSystem(valley);
+    const terrain = new TerrainSystem(valley, flow.levelMap);
+    setRockWaterLevel(flow.levelMap, valley.heightfield);
 
     progress('Planting the valley', 0.6);
     const catalog = loadCatalog();
@@ -155,6 +188,19 @@ export class World {
     progress('Placing the stones', 0.85);
     const heightAt = (x: number, z: number) => sampleHeight(valley.heightfield, x, z);
     const rocks = new RockSystem(catalog.stones, stoneInstances, heightAt, (x, z) => cellInfo(valley, x, z).wetness);
+    progress('Letting the water run', 0.88);
+    await flow.init(World.stonesForFlow(rocks.stones));
+    // The first fish (plan D30): a school of Denison barbs in the riffles, where you start.
+    progress('Waking the fish', 0.9);
+    const fish = new FishSystem([{ behavior: DENISON_BARB, template: 'torpedo', pattern: DENISON_PATTERN }]);
+    await fish.init(flow, options.seed);
+    const riffles = valley.profile.zones.find((z) => z.name === 'riffles');
+    if (riffles) {
+      for (const k of [0.35, 0.5, 0.65]) {
+        const i = Math.round(riffles.start + (riffles.end - riffles.start) * k);
+        await fish.release(0, valley.path.points[i * 2] as number, valley.path.points[i * 2 + 1] as number, 18, 2.5);
+      }
+    }
     const grassDensity = valley.grassDensity ?? new Float32Array(valley.heightfield.size ** 2);
     const grass = new GrassSystem({ heightAt, densityAt: (x, z) => grassDensityAt(valley, grassDensity, x, z) }, wind);
     grass.density = QUALITY_GRASS[options.quality];
@@ -167,6 +213,8 @@ export class World {
       trees,
       grass,
       rocks,
+      flow,
+      fish,
       wind,
       quality: options.quality,
       clock,
@@ -197,6 +245,38 @@ export class World {
     return sampleHeight(this.valley.heightfield, x, z);
   }
 
+  /**
+   * Places a stone (builder and tests): adds the rock, then re-solves the flow locally around it (plan 6.2: foam and
+   * a wake appear within about half a second). Returns the placed stone.
+   */
+  async placeStone(kind: string, x: number, z: number, radius = 0.8, flatness = 0.7): Promise<PlacedStone> {
+    const bed = this.flow.sample(x, z)?.bed ?? this.heightAt(x, z);
+    const stone = this.rocks.add({
+      kind,
+      x,
+      y: bed - radius * flatness * 0.25,
+      z,
+      radius,
+      height: radius * flatness,
+      yaw: Math.random() * Math.PI * 2,
+      variant: 0,
+      moss: 0.2,
+    });
+    await this.flow.setStones(World.stonesForFlow(this.rocks.stones), { x, z, radius: radius + 2 });
+    return stone;
+  }
+
+  async removeStone(id: number): Promise<void> {
+    const stone = this.rocks.stones.find((s) => s.id === id);
+    this.rocks.remove(id);
+    if (stone)
+      await this.flow.setStones(World.stonesForFlow(this.rocks.stones), {
+        x: stone.x,
+        z: stone.z,
+        radius: stone.radius + 2,
+      });
+  }
+
   /** Places the player at a named viewpoint looking at its target (golden shots, plan 10). */
   goToSpot(name: string): boolean {
     const spot = this.valley.spots.find((s) => s.name === name);
@@ -225,6 +305,8 @@ export class World {
     const { camera } = this.engine;
     this.clock.advance(info.dt);
     (this.wind.time as any).value = info.time;
+    globals.time.value = info.time;
+    this.flow.update(info.time);
     if (this.mode === 'explore') this.player.update(info.dt, this.input, camera);
     this.physics.step(info.dt);
 
@@ -241,6 +323,21 @@ export class World {
       hourAngle,
       camera.position,
     );
+    // Direct sun strength for caustics and in-water light.
+    const sunLight = this.sky.sun.intensity / this.sky.sunStrength;
+    globals.sunLight.value = sunLight;
+    (globals.sunColor.value as THREE.Color).copy(this.sky.sun.color);
+    (this.flow.look.light as any).value = 0.08 + sunLight * 0.9 + this.sky.hemi.intensity * 0.6;
+    // Underwater whenever the camera itself is below the water surface (any camera mode).
+    const surface = this.flow.surfaceAt(camera.position.x, camera.position.z);
+    const target = surface !== null && camera.position.y < surface - 0.02 ? 1 : 0;
+    const uw: any = this.post.underwater;
+    uw.value += (target - uw.value) * Math.min(1, info.dt * 8 + (target === 1 && uw.value < 0.5 ? 0.5 : 0));
+    const turbidity = (this.flow.look.turbidity as any).value as number;
+    (this.post.underwaterVisibility as any).value = 16 - turbidity * 13;
+    (this.post.underwaterColor as any).value
+      .setRGB(0.03 + turbidity * 0.12, 0.2 + turbidity * 0.05, 0.19 - turbidity * 0.06)
+      .multiplyScalar(0.3 + sunLight * 0.7);
     const renderer = this.engine.renderer;
     renderer.toneMappingExposure +=
       (this.atmosphere.targetExposure - renderer.toneMappingExposure) *
@@ -254,17 +351,27 @@ export class World {
       (this.terrain.look.lushness as any).value = Math.min(1, lush);
       this.grass.setLook(Math.min(1, lush));
       (this.terrain.look.snowLine as any).value = 1250 + (1 - weights.winter) * 900 - weights.spring * 300;
+      // Floating debris follows the season: blossom petals in spring, red leaves in autumn.
+      this.debris.mix = {
+        petal: weights.spring * 0.55,
+        leaf: 0.12 + weights.monsoon * 0.15,
+        autumnLeaf: weights.autumn * 0.5 + weights.winter * 0.15,
+      };
     }
 
     this.terrain.update(camera.position);
     this.trees.update(camera.position, info.time);
     this.grass.update(camera.position);
+    this.debris.update(info.dt, camera.position, info.time);
+    this.fish.update(info.dt, this.player.position);
   }
 
   dispose(): void {
     this.unsubscribe?.();
     this.input.dispose();
     this.player.dispose();
+    this.fish.dispose();
+    this.flow.dispose();
     this.physics.dispose();
     this.sky.dispose();
     this.pipeline.dispose();

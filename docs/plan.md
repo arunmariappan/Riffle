@@ -46,7 +46,7 @@ every phase; each phase in [10](#10-phases) also gets a **Built** note.
 |---|---|---|---|
 | 0 — Groundwork and hardware check | M1 | **Done** (P1 open) | Scaffold, CI, flow solver prototype, rendering test scene, e2e in Chrome and Edge |
 | 1 — The valley | M1 | **Done** (P6–P8 open) | Generated valley with erosion, terrain LOD, sky and time of day, walking, first planting; 58 fps at 1080p High |
-| 2 — Living water | M1 | Not started | |
+| 2 — Living water | M1 | **Done** (P10–P12 open) | Flow solver in a worker, river/pond/waterfall water with flow-map ripples, refraction, foam, caustics, wading and swimming, debris, first barb school; 54.6 fps |
 | 3 — Wind and vegetation | M2 | Not started | |
 | 4 — Builder | M2 | Not started | |
 | 5 — Fish | M3 | Not started | |
@@ -67,6 +67,9 @@ every phase; each phase in [10](#10-phases) also gets a **Built** note.
 | P6 | **Reference photos** of monsoon mountain streams for the golden-shot comparison. I can't download copyrighted photos into the repo; a personal folder of yours (kept out of Git) works best. Until then the shots are judged by eye. | You | Phase 1 | Open |
 | P7 | **Volumetric clouds and cloud shadows**: the sky uses three.js SkyMesh with its 2D cloud layer for now (see C7). | Me | Phase 1 | Open (Phase 6 weather or Phase 9) |
 | P8 | **First load compiles shaders for 20–35 s** in a fresh browser profile (Windows D3D12 shader compilation). The loading screen stays up until frames are smooth, and your own Chrome caches the shaders, so later loads are faster. | Me | Phase 1 | Mitigated |
+| P10 | **Terrain detail normal maps**: D3D12 allows 16 samplers per shader stage, so only the rock layer keeps a normal map (meadow and pebble normals were dropped). Packing layers into an array texture would restore them. | Me | Phase 2 | Open (Phase 9) |
+| P11 | **Waterfall spray and mist particles** aren't built yet; the falling sheet and the plunge foam are. | Me | Phase 2 | Open (Phase 3 particles) |
+| P12 | Looking up from underwater shows the world above (refracted) but no Snell's window or total internal reflection. | Me | Phase 2 | Accepted |
 | P9 | The main bundle is 5 MB (EZ-Tree inlines its textures). Code-splitting the engine behind the start screen is planned. | Me | Phase 0 | Open (Phase 9) |
 
 ### Changes from the plan made during implementation
@@ -85,6 +88,9 @@ every phase; each phase in [10](#10-phases) also gets a **Built** note.
 | C10 | Far trees as baked octahedral impostors | A "lite" tree (low-poly trunk and canopy blobs) beyond 55 m, and a mottled canopy layer in the terrain material for distant slopes | No GPU bake step needed yet; impostors stay an option if distant forests need more detail |
 | C11 | Species JSON in Phase 4 | Species and stone JSON + Zod schemas added in Phase 1 (the scatter rules needed them) | Earlier, not different |
 | C12 | Rocks from Poly Haven models | Generated rocks (noise-displaced icospheres) with Poly Haven CC0 textures | Free variety, no model downloads |
+| C13 | One world-aligned flow texture for all water consumers | A flow texture in stream coordinates (cross-sections × cells) for the river shader, plus a world water-level map (half float) for the terrain and rocks (caustics, wet lines) | Matches the river-aligned solver (C1); the water mesh carries stream UVs |
+| C14 | GPU particles for floating debris | Petals, leaves and foam flecks advected on the CPU with the solved flow, drawn as instanced quads | A few hundred particles are cheap on the CPU and use the same flow samples as the fish |
+| C15 | — | The renderer asks the adapter for more sampled textures per shader stage (WebGPU's default is 16) | The terrain shader needs 17 with shadows and sky light |
 
 ---
 
@@ -872,6 +878,37 @@ holding against the current, sheltering behind stones).
 stones, scaling the discharge scales the speed and the depth, a re-solve after one edit takes < 100 ms); a debug rock
 brings foam and a wake within 0.5 s; raising the discharge visibly raises the water; swimming and wading feel right;
 the barb school holds in the current and gathers behind a dropped stone; the budget holds.
+
+**Built (2026-10-04):**
+- **Flow worker** (`src/workers/flow.worker.ts`): the conveyance-weighted solver over the whole stream (2,211
+  cross-sections × 49 cells), a full solve in **0.65 s**, local re-solves after a stone in well under 0.5 s. Results go
+  out through **double-buffered shared memory with a version number** (`src/sim/shared/doubleBuffer.ts`, stress-tested
+  with a writer thread: 3,000 publishes, zero torn reads) and are read by one shared sampler on the main thread and in
+  the fish worker.
+- **Water rendering** (`src/engine/water/`): the river mesh follows the solved levels per reach; flow-map ripples from a
+  generated tileable normal map slide with the current; color by depth from the depth buffer (clear shallows →
+  turquoise pools → cloudy with turbidity); refraction of the bed; foam from the solver (riffles, wakes, plunge) broken
+  up by drifting noise, plus a shore line; sun and sky reflections. A greener, siltier pond. A waterfall sheet scaled to
+  the real drop.
+- **Caustics and wet lines**: a world water-level map drives animated caustics on the bed and rocks, a dark wet band
+  at the waterline and darker, glossier stone below it.
+- **Wading and swimming**: the current pushes you, deeper water slows you, swimming above 1.25 m with dive/rise
+  controls, and an underwater color and fog whenever the camera is below the surface.
+- **Floating debris**: about 320 petals, leaves and foam flecks drifting on the current, mixed by season.
+- **Water controls** in the dev panel (Tweakpane): discharge, speed ×, level offset, clarity, plus time, wind and tree
+  settings. The real Builder panels arrive in Phase 4.
+- **The first fish** (D30): a generated fish body (torpedo template, forked tail, fins), a swim shader (travelling
+  wave, fin flutter, banked turns), the Denison barb pattern (red line over a black stripe, yellow-tipped tail),
+  iridescent sheen. The fish worker runs the school at 30 Hz (`src/sim/boids/school.ts`): swimming effort = desired
+  ground velocity − current, so barbs face upstream and hold station on their own, find shelter behind stones, flee,
+  feed. 54 barbs in three schools in the riffles.
+- **Tests**: 36 unit tests (+ flow-driven school: stays in water for 10 simulated minutes, faces upstream, shelters
+  behind a stone in strong current, gathers at food; shared buffer race test) and 4 new e2e tests (a dropped stone
+  brings foam and a calm wake within 0.5 s, more discharge raises and speeds the water, wade-swim-dive, the barb school
+  stays in the water and faces upstream).
+- **Performance** (benchmark, 1080p High): **54.6 fps** average, no frame over 100 ms, GPU 15.6 ms, CPU 17.8 ms.
+- Found and fixed: the SSGI read in three 0.186 (separate AO and GI textures), the 16-texture and 16-sampler
+  per-stage limits, the waterfall lip level (the bed is smeared across the cliff).
 
 ### Phase 3 — Wind and vegetation (L)
 

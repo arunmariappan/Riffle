@@ -43,11 +43,11 @@ export class TerrainSystem {
   private readonly chunks: Chunk[] = [];
   private readonly valley: Valley;
 
-  constructor(valley: Valley) {
+  constructor(valley: Valley, levelMap: THREE.Texture) {
     this.valley = valley;
     this.look = createTerrainLook();
     this.maskTexture = createMaskTexture(valley);
-    this.material = createTerrainMaterial(valley, this.maskTexture, this.look);
+    this.material = createTerrainMaterial(valley, this.maskTexture, this.look, levelMap);
     const hf = valley.heightfield;
     const extent = (hf.size - 1) * hf.cell;
     const n = Math.round(extent / CHUNK);

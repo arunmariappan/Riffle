@@ -182,3 +182,11 @@ body,
   border-radius: 999px;
   pointer-events: none;
 }
+
+.dev-panel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 280px;
+  z-index: 10;
+}

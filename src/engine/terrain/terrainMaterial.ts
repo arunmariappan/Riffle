@@ -16,8 +16,10 @@ import {
   mx_noise_float,
   normalMap,
   cameraPosition,
+  normalView,
 } from 'three/tsl';
 import type { Valley } from '../../sim/terrain/valley';
+import { causticLight, waterLevelAt } from '../water/caustics';
 
 /** Texture set for one ground layer. */
 interface Layer {
@@ -104,15 +106,17 @@ export function createTerrainMaterial(
   valley: Valley,
   masks: THREE.Texture,
   look: TerrainLook,
+  levelMap: THREE.Texture,
 ): THREE.MeshStandardNodeMaterial {
   const hf = valley.heightfield;
   const extent = (hf.size - 1) * hf.cell;
-  const meadow = loadLayer('leafy_grass', 0x3f5a22);
+  // Samplers are limited (16 per stage on D3D12): only the rock layer keeps a normal map.
+  const meadow = loadLayer('leafy_grass', 0x3f5a22, false);
   const forest = loadLayer('forest_leaves_02', 0x4a3a26, false);
   const soil = loadLayer('red_laterite_soil_stones', 0x7a4a30, false);
   const rock = loadLayer('rock_face_03', 0x6a6660);
   const mossRock = loadLayer('mossy_rock', 0x6a6a58, false);
-  const pebbles = loadLayer('ganges_river_pebbles', 0x7a7262);
+  const pebbles = loadLayer('ganges_river_pebbles', 0x7a7262, false);
   const sand = loadLayer('forrest_sand_01', 0x8a7a60, false);
 
   const l: any = look;
@@ -201,19 +205,22 @@ export function createTerrainMaterial(
   const snow = smoothstep(l.snowLine, l.snowLine.add(120), positionWorld.y).mul(smoothstep(0.45, 0.25, slope));
   ground = mix(ground, vec3(0.92, 0.94, 0.97), snow);
 
+  // The solved water surface: wet line just above it, darker and glossier below it, caustics on the bed.
+  const waterLevel = waterLevelAt(levelMap, positionWorld, hf);
+  const below = waterLevel.sub(positionWorld.y);
+  const under = smoothstep(-0.02, 0.06, below);
+  const wetLine = smoothstep(-0.4, 0.0, below).mul(float(1).sub(under));
+  ground = ground.mul(float(1).sub(wetLine.mul(0.35)).sub(under.mul(0.12)));
   m.colorNode = vec4(ground, 1);
-  m.roughnessNode = mix(float(0.92), float(0.35), wetBand.max(bed).mul(0.9));
+  m.roughnessNode = mix(float(0.92), float(0.3), wetBand.max(bed).max(wetLine).max(under).mul(0.9));
+  m.emissiveNode = ground.mul(causticLight(positionWorld, waterLevel));
 
-  // Normals: blend the main detail maps by layer weight.
-  const nMeadow: any = normalMap(texture(meadow.normal!, uvGround), vec2(0.8, 0.8));
-  const nPebble: any = normalMap(texture(pebbles.normal!, uvFine), vec2(1.2, 1.2));
+  // Normal detail on the cliffs (triplanar rock normal map).
   const nRock: any = normalMap(
     triplanarTexture(texture(rock.normal!), null, null, float(0.11), positionWorld, normalWorld),
     vec2(1, 1),
   );
-  let n: any = mix(nMeadow, nPebble, beach.max(bed));
-  n = mix(n, nRock, rockMask);
-  m.normalNode = n.normalize();
+  m.normalNode = mix(normalView, nRock, rockMask).normalize();
   void extent;
   return m;
 }

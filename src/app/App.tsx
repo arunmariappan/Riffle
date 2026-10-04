@@ -6,6 +6,7 @@ import { World } from '../engine/world/World';
 import { runBenchmark } from '../engine/bench';
 import { StatsOverlay } from './StatsOverlay';
 import { LoadingScreen } from './LoadingScreen';
+import { DevPanel } from './DevPanel';
 
 declare global {
   interface Window {
@@ -26,6 +27,7 @@ export interface AppParams {
   bench: string | null;
   exposure?: number;
   stats: boolean;
+  dev: boolean;
 }
 
 export function readParams(): AppParams {
@@ -44,6 +46,7 @@ export function readParams(): AppParams {
     bench: p.get('bench'),
     exposure: num('exposure'),
     stats: p.has('stats') || p.has('bench') || import.meta.env.DEV,
+    dev: (import.meta.env.DEV || p.has('dev')) && !p.has('test') && !p.has('bench') && !p.has('freeze'),
   };
 }
 
@@ -161,6 +164,7 @@ export function App({ adapterInfo }: { adapterInfo: string }) {
         </div>
       )}
       {engine && params.stats && <StatsOverlay engine={engine} quality={quality} onQuality={changeQuality} />}
+      {world && params.dev && <DevPanel world={world} />}
     </div>
   );
 }
