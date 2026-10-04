@@ -1,5 +1,7 @@
 import { DropdownMenu } from 'radix-ui';
 import { useUi, type AppMode } from '../../state/store';
+import { SettingsDialog } from './SettingsDialog';
+import type { QualityPreset } from '../../state/quality';
 import styles from '../ui.module.css';
 
 export interface TopBarProps {
@@ -8,6 +10,8 @@ export interface TopBarProps {
   onOpen: () => void;
   onNew: () => void;
   savedAt: string | null;
+  quality: QualityPreset;
+  onQuality: (q: QualityPreset) => void;
 }
 
 const MODES: [AppMode, string, string][] = [
@@ -17,7 +21,7 @@ const MODES: [AppMode, string, string][] = [
 ];
 
 /** Mode switch, sound on/off and the valley menu (save, open, new). */
-export function TopBar({ onMode, onSave, onOpen, onNew, savedAt }: TopBarProps) {
+export function TopBar({ onMode, onSave, onOpen, onNew, savedAt, quality, onQuality }: TopBarProps) {
   const mode = useUi((s) => s.mode);
   const muted = useUi((s) => s.prefs.muted);
   const setPrefs = useUi((s) => s.setPrefs);
@@ -49,6 +53,7 @@ export function TopBar({ onMode, onSave, onOpen, onNew, savedAt }: TopBarProps) 
       >
         {muted ? '🔇' : '🔊'}
       </button>
+      <SettingsDialog quality={quality} onQuality={onQuality} />
       <DropdownMenu.Root>
         <DropdownMenu.Trigger className={styles.button}>Valley ▾</DropdownMenu.Trigger>
         <DropdownMenu.Portal>

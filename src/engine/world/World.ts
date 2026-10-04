@@ -39,6 +39,8 @@ import { grassDensityAt } from '../../sim/scatter/grassDensity';
 import { WorldItems, stonesForFlow } from './WorldItems';
 import { OverlaySystem } from '../overlays/Overlays';
 import { LIMITS, defaultSettings, normalizeSettings, type ValleySettings } from '../../state/settings';
+import { QUALITY } from '../../state/quality';
+import type { Preferences } from '../../state/preferences';
 import { WEATHER_LOOKS, blendWeather, type WeatherLook } from '../../sim/weather/weather';
 import { SAVE_VERSION, type SaveData } from '../../save/saveData';
 import { cloneEditLayer } from '../../builder/editLayer';
@@ -65,9 +67,14 @@ export interface WorldOptions {
 
 export type CameraMode = 'explore' | 'builder' | 'photo' | 'fixed' | 'follow';
 
-const QUALITY_GRASS: Record<QualityPreset, number> = { low: 0.35, medium: 0.6, high: 1, ultra: 1.3 };
+const QUALITY_GRASS = (q: QualityPreset): number => QUALITY[q].grass;
 /** Render resolution per preset; TRAA upscales to the output (plan D9). */
-export const QUALITY_RENDER_SCALE: Record<QualityPreset, number> = { low: 0.7, medium: 0.8, high: 0.85, ultra: 1 };
+export const QUALITY_RENDER_SCALE: Record<QualityPreset, number> = {
+  low: QUALITY.low.renderScale,
+  medium: QUALITY.medium.renderScale,
+  high: QUALITY.high.renderScale,
+  ultra: QUALITY.ultra.renderScale,
+};
 
 /**
  * Everything in the valley (plan 5): terrain, sky, atmosphere, plants, rocks, physics, the player and the clock.
@@ -106,6 +113,8 @@ export class World {
   exposureBias = 1;
   /** True while a time-lapse records: season looks and weather follow every frame at once. */
   capturing = false;
+  /** Comfort: lightning without bright flashes or flicker. */
+  reduceFlashes = false;
   /** Animation time held while photo mode is paused. */
   private photoTime: number | null = null;
   /** Called on each lightning flash with the delay until its thunder (seconds) and its strength (Phase 7 audio). */
@@ -334,7 +343,7 @@ export class World {
     const grassDensity = valley.grassDensity ?? new Float32Array(valley.heightfield.size ** 2);
     valley.grassDensity = grassDensity;
     const grass = new GrassSystem({ heightAt, densityAt: (x, z) => grassDensityAt(valley, grassDensity, x, z) }, wind);
-    grass.density = QUALITY_GRASS[options.quality];
+    grass.density = QUALITY_GRASS(options.quality);
     const clock = new SimClock(options.day ?? 95, options.hour ?? 8);
     const world = new World({
       engine,
@@ -695,12 +704,23 @@ export class World {
     this.player.pitch = -0.08;
   }
 
+  /** Your comfort and graphics preferences (field of view, mouse, head bob, flashes, frame cap). */
+  applyPreferences(p: Preferences): void {
+    this.player.settings.fov = p.fov;
+    this.player.settings.mouseSensitivity = 0.0022 * p.mouseSensitivity;
+    this.player.settings.headBob = p.headBob;
+    this.player.invertY = p.invertY;
+    this.reduceFlashes = p.reduceFlashes;
+    this.engine.maxFps = p.maxFps;
+  }
+
   setQuality(quality: QualityPreset): void {
     this.quality = quality;
     this.pipeline.dispose();
     this.pipeline = createPipeline(this.engine.renderer, this.engine.scene, this.engine.camera, quality, this.post);
     this.engine.pipeline = this.pipeline.pipeline;
-    this.grass.density = QUALITY_GRASS[quality];
+    this.grass.density = QUALITY_GRASS(quality);
+    this.ecology.setFishBudget(QUALITY[quality].fishBudget);
     this.grass.update(this.engine.camera.position, true);
     this.engine.setRenderScale(QUALITY_RENDER_SCALE[quality]);
   }
@@ -761,7 +781,8 @@ export class World {
       // Thunder travels 343 m/s; strikes are 0.3–4 km away.
       this.onLightning?.((300 + Math.random() * 3700) / 343, strength);
     }
-    // A flash flickers a couple of times.
+    // A flash flickers a couple of times (a soft, steady glow with reduced flashes).
+    if (this.reduceFlashes) return this.flash * 0.12;
     return this.flash * (0.6 + 0.4 * Math.sin(this.flash * 40));
   }
 

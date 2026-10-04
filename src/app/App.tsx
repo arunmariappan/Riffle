@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Engine } from '../engine/Engine';
-import { buildTestScene, type TestSceneHandle } from '../engine/testScene';
-import { QUALITY_PRESETS, type QualityPreset } from '../engine/post/pipeline';
-import { World } from '../engine/world/World';
-import { Builder } from '../engine/builder/Builder';
-import { ThumbnailRenderer } from '../engine/thumbnails';
-import { thumbnailJobs } from '../engine/builder/previews';
-import { runBenchmark } from '../engine/bench';
+import type { Engine } from '../engine/Engine';
+import type { World } from '../engine/world/World';
+import type { Builder } from '../engine/builder/Builder';
+import type { Booted } from './boot';
+import { QUALITY_PRESETS, type QualityPreset } from '../state/quality';
+import { loadPreferences } from '../state/preferences';
+import { recoveryPlan } from './recovery';
 import { StatsOverlay } from './StatsOverlay';
 import { LoadingScreen } from './LoadingScreen';
 import { DevPanel } from './DevPanel';
@@ -20,8 +19,8 @@ import { PhotoPanel, ThirdsGrid } from './panels/PhotoPanel';
 import { useUi, type AppMode } from '../state/store';
 import { decodeSave, type SaveData } from '../save/saveData';
 import { Autosaver } from '../save/autosave';
+import type { NatureAudio } from '../audio/NatureAudio';
 import { createSaveStore, openFromDisk, requestPersistence, saveToDisk } from '../save/browserStorage';
-import { NatureAudio } from '../audio/NatureAudio';
 import { unlockAudio } from '../audio/AudioEngine';
 
 declare global {
@@ -70,7 +69,9 @@ export function readParams(): AppParams {
   const testMode = p.has('test') || p.has('bench') || p.has('freeze');
   return {
     scene: p.get('scene') === 'test' ? 'test' : 'valley',
-    quality: QUALITY_PRESETS.includes(q as QualityPreset) ? (q as QualityPreset) : 'high',
+    quality: QUALITY_PRESETS.includes(q as QualityPreset)
+      ? (q as QualityPreset)
+      : (loadPreferences().quality ?? 'high'),
     autostart: p.has('autostart') || p.has('test') || p.has('bench') || p.has('open') || p.has('continue'),
     seed: p.get('seed') ?? 'riffle',
     day: num('day'),
@@ -87,6 +88,9 @@ export function readParams(): AppParams {
     autosave: p.has('autosave') || !testMode,
   };
 }
+
+/** Recent GPU device losses this session (a second one reloads at a lighter preset). */
+const LOST_KEY = 'riffle:device-lost';
 
 /** Name of the hand-over file used by "Open valley…" (the page reloads to build the other valley). */
 const PENDING = 'open-pending.riffle';
@@ -119,7 +123,8 @@ export function App({ adapterInfo }: { adapterInfo: string }) {
   const [locked, setLocked] = useState(false);
   const [latest, setLatest] = useState<number | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
-  const sceneRef = useRef<TestSceneHandle | null>(null);
+  const bootedRef = useRef<Booted | null>(null);
+  const [lost, setLost] = useState<string | null>(null);
   const mode = useUi((s) => s.mode);
   const toast = useUi((s) => s.toast);
   const hideUi = useUi((s) => s.hideUi);
@@ -190,100 +195,63 @@ export function App({ adapterInfo }: { adapterInfo: string }) {
     else startNew();
   }, [params, session, store, startFrom, startNew, resume]);
 
+  // A lost GPU device (driver reset, sleep): save the valley (its state is on the CPU) and reload from the autosave.
+  const recover = useCallback(
+    async (reason: string) => {
+      let history: number[];
+      try {
+        history = JSON.parse(sessionStorage.getItem(LOST_KEY) ?? '[]') as number[];
+      } catch {
+        history = [];
+      }
+      const plan = recoveryPlan(Array.isArray(history) ? history : [], Date.now(), params.quality, reason);
+      try {
+        sessionStorage.setItem(LOST_KEY, JSON.stringify(plan.history));
+      } catch {
+        // Without session storage every loss counts as the first.
+      }
+      setLost(plan.message);
+      const saver = bootedRef.current?.autosaver;
+      if (saver) await Promise.race([saver.save(), new Promise((r) => setTimeout(r, 4000))]).catch(() => undefined);
+      setTimeout(() => {
+        window.location.search = plan.search;
+      }, 1500);
+    },
+    [params.quality],
+  );
+
   useEffect(() => {
     if (!session || !canvasRef.current) return;
     let disposed = false;
-    let created: Engine | null = null;
-    let createdWorld: World | null = null;
-    let createdBuilder: Builder | null = null;
-    let autosaver: Autosaver | null = null;
-    let audio: NatureAudio | null = null;
-    let timer = 0;
-    const cleanups: (() => void)[] = [];
+    let booted: Booted | null = null;
     window.__riffle = { ready: false };
     (async () => {
       try {
-        created = await Engine.create(canvasRef.current as HTMLCanvasElement);
-        if (disposed) return created.dispose();
-        if (params.scene === 'test') {
-          if (params.exposure) created.renderer.toneMappingExposure = params.exposure;
-          sceneRef.current = await buildTestScene(created, params.quality);
-        } else {
-          setLoading({ label: 'Waking up', fraction: 0 });
-          createdWorld = await World.create(created, {
-            seed: session.seed,
-            quality: params.quality,
-            day: params.day,
-            hour: params.hour,
-            spot: params.spot,
-            restore: session.restore,
-            restoreSections: session.sections,
-            allFish: params.allFish,
-            onProgress: (label, fraction) => setLoading({ label, fraction }),
-          });
-          if (disposed) return;
-          if (params.freeze) createdWorld.clock.paused = true;
-          createdBuilder = new Builder(createdWorld);
-          const b = createdBuilder;
-          await b.precompile();
-          cleanups.push(created.onFrame((info) => b.update(info.dt)));
-          if (!params.bench) {
-            setLoading({ label: 'Painting the catalog', fraction: 0.985 });
-            const thumbs = new ThumbnailRenderer(created);
-            await thumbs.renderAll(thumbnailJobs(createdWorld), (id, url) => useUi.getState().setThumbnail(id, url));
-            thumbs.dispose();
-          }
-          if (!params.bench) {
-            // The valley's sound starts at your first click (the browser's audio unlock).
-            const a = new NatureAudio(createdWorld);
-            audio = a;
-            const prefs = useUi.getState().prefs;
-            a.setVolume(prefs.volume, prefs.muted);
-            void a.start().then(() => {
-              const p = useUi.getState().prefs;
-              a.setVolume(p.volume, p.muted);
-            });
-            cleanups.push(created.onFrame((info) => a.update(info.dt)));
-            cleanups.push(useUi.subscribe((st) => a.setVolume(st.prefs.volume, st.prefs.muted)));
-            cleanups.push(() => a.dispose());
-          }
-          setWorld(createdWorld);
-          setBuilder(createdBuilder);
-          setLoading({ label: 'Letting the light settle', fraction: 0.99 });
-          created.start();
-          await created.waitForSmoothFrames();
-          setLoading(null);
-          if (params.autosave) {
-            autosaver = new Autosaver(store, () => b.saveBytes());
-            const save = () => {
-              void autosaver?.save().then(() => setSavedAt(Date.now()));
-            };
-            timer = window.setInterval(() => {
-              if (autosaver?.tick()) setTimeout(() => setSavedAt(Date.now()), 500);
-            }, 10_000);
-            const onHidden = () => {
-              if (document.visibilityState === 'hidden') save();
-            };
-            document.addEventListener('visibilitychange', onHidden);
-            window.addEventListener('pagehide', save);
-            cleanups.push(() => {
-              document.removeEventListener('visibilitychange', onHidden);
-              window.removeEventListener('pagehide', save);
-            });
-          }
-        }
-        created.start();
-        setEngine(created);
+        // The engine loads only now (code-split behind the start screen).
+        const { boot, runBenchmark } = await import('./boot');
+        booted = await boot(canvasRef.current as HTMLCanvasElement, params, session, store, {
+          onLoading: setLoading,
+          onSaved: () => setSavedAt(Date.now()),
+          onDeviceLost: (message) => void recover(message),
+          onWorld: (w, b) => {
+            setWorld(w);
+            setBuilder(b);
+          },
+          isDisposed: () => disposed,
+        });
+        if (!booted) return;
+        bootedRef.current = booted;
+        setEngine(booted.engine);
         window.__riffle = {
           ready: true,
-          engine: created,
-          world: createdWorld ?? undefined,
-          builder: createdBuilder ?? undefined,
-          autosaver: autosaver ?? undefined,
-          audio: audio ?? undefined,
+          engine: booted.engine,
+          world: booted.world ?? undefined,
+          builder: booted.builder ?? undefined,
+          autosaver: booted.autosaver ?? undefined,
+          audio: booted.audio ?? undefined,
         };
-        if (params.bench && createdWorld) {
-          const result = await runBenchmark(created, createdWorld, params.bench);
+        if (params.bench && booted.world) {
+          const result = await runBenchmark(booted.engine, booted.world, params.bench);
           window.__riffle = { ...window.__riffle, bench: result };
         }
       } catch (err) {
@@ -296,15 +264,10 @@ export function App({ adapterInfo }: { adapterInfo: string }) {
     })();
     return () => {
       disposed = true;
-      window.clearInterval(timer);
-      for (const c of cleanups) c();
-      sceneRef.current?.dispose();
-      sceneRef.current = null;
-      createdBuilder?.dispose();
-      createdWorld?.dispose();
-      created?.dispose();
+      booted?.dispose();
+      bootedRef.current = null;
     };
-  }, [session, params, store]);
+  }, [session, params, store, recover]);
 
   // Browsers allow sound only after you interact: the first click or key press anywhere unlocks it.
   useEffect(() => {
@@ -335,8 +298,8 @@ export function App({ adapterInfo }: { adapterInfo: string }) {
 
   const changeQuality = (q: QualityPreset) => {
     setQuality(q);
-    sceneRef.current?.setQuality(q);
-    world?.setQuality(q);
+    bootedRef.current?.setQuality(q);
+    useUi.getState().setPrefs({ quality: q });
   };
 
   const onMode = (m: AppMode) => builder?.setMode(m);
@@ -390,6 +353,8 @@ export function App({ adapterInfo }: { adapterInfo: string }) {
             onOpen={() => void openFile()}
             onNew={newValley}
             savedAt={savedAt ? ago(savedAt) : null}
+            quality={quality}
+            onQuality={changeQuality}
           />
           {mode === 'builder' && (
             <>
@@ -409,6 +374,11 @@ export function App({ adapterInfo }: { adapterInfo: string }) {
         <div className="explore-hint">
           Click to look around · WASD to walk · Shift to run · Space to jump · F to throw food · E to look at a fish ·
           Tab to build · Esc to release
+        </div>
+      )}
+      {lost && (
+        <div className="device-lost" role="alert" data-testid="device-lost">
+          {lost}
         </div>
       )}
       {error && (

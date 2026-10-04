@@ -1,5 +1,5 @@
 import { useUi } from '../../state/store';
-import { colormap } from '../../engine/overlays/Overlays';
+import { colormapHex } from '../../builder/colormap';
 import styles from '../ui.module.css';
 
 /** The placement reason next to the cursor while dragging (green: fine, red: why not). */
@@ -40,7 +40,7 @@ export function Toasts() {
 export function Legend() {
   const legend = useUi((s) => s.legend);
   if (!legend) return null;
-  const stops = [0, 0.25, 0.5, 0.75, 1].map((t) => `#${colormap(t).getHexString()} ${t * 100}%`).join(', ');
+  const stops = [0, 0.25, 0.5, 0.75, 1].map((t) => `${colormapHex(t)} ${t * 100}%`).join(', ');
   return (
     <div className={styles.legend}>
       <div>{legend.label}</div>

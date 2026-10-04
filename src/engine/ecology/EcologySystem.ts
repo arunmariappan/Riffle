@@ -27,6 +27,7 @@ import type { BushDef, WaterPlantDef } from '../../content/schema';
 import type { OverlayField, OverlayKind } from '../overlays/Overlays';
 import type { WeatherKind } from '../../sim/weather/weather';
 import type { EcosystemSettings } from '../../state/settings';
+import { QUALITY } from '../../state/quality';
 
 /** Simulated seconds between catching the ecosystem up to the clock (at least every half a real second). */
 const SYNC_EVERY = 0.5;
@@ -78,7 +79,7 @@ export class EcologySystem {
   private dischargeTimer = 0;
   private lastOverlay: OverlayKind = 'none';
   private readonly view = new FishView();
-  private readonly viewConfig: ViewConfig;
+  private viewConfig: ViewConfig;
   private readonly viewSpecies: ViewSpecies[];
   private viewQueue: Promise<void> = Promise.resolve();
   private canopy: CanopyGrid;
@@ -91,7 +92,9 @@ export class EcologySystem {
   constructor(world: World, options: { allFish?: boolean } = {}) {
     this.world = world;
     this.species = world.catalog.fish.map(speciesLife);
-    this.viewConfig = options.allFish ? { ...VIEW_DEFAULTS, enter: 1e6, leave: 2e6, budget: 1400 } : VIEW_DEFAULTS;
+    this.viewConfig = options.allFish
+      ? { ...VIEW_DEFAULTS, enter: 1e6, leave: 2e6, budget: 1400 }
+      : { ...VIEW_DEFAULTS, budget: QUALITY[world.quality].fishBudget };
     this.viewSpecies = world.catalog.fish.map((d) => ({
       // Big rare fish (mahseer, koi) are all shown; small schooling fish a share of them.
       share: d.body.length[1] > 0.3 ? 1 : 0.3,
@@ -249,6 +252,11 @@ export class EcologySystem {
       }
     }
     return best;
+  }
+
+  /** Most individual fish shown near the camera (the quality preset). */
+  setFishBudget(budget: number): void {
+    if (this.viewConfig.enter < 1e5) this.viewConfig = { ...this.viewConfig, budget };
   }
 
   /** Canopy shade 0..1 over a point (audio: rain on leaves, leaf litter underfoot). */

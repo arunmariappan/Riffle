@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Tabs } from 'radix-ui';
 import type { World } from '../../engine/world/World';
-import { PHOTO_LIMITS, type PhotoSettings } from '../../engine/photo/PhotoMode';
+import { PHOTO_LIMITS, type PhotoSettings } from '../../photo/settings';
 import { SliderRow } from '../ui/SliderRow';
 import { useUi } from '../../state/store';
 import { depthOfField, type Resolution } from '../../photo/lens';

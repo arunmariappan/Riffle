@@ -25,9 +25,9 @@ import { traa } from 'three/addons/tsl/display/TRAANode.js';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
 
-export type QualityPreset = 'low' | 'medium' | 'high' | 'ultra';
+import type { QualityPreset } from '../../state/quality';
 
-export const QUALITY_PRESETS: readonly QualityPreset[] = ['low', 'medium', 'high', 'ultra'];
+export { QUALITY_PRESETS, type QualityPreset } from '../../state/quality';
 
 /** Shared grading / underwater controls that survive pipeline rebuilds. */
 export interface PostControls {

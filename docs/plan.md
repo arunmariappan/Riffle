@@ -41,10 +41,10 @@ are recommendations you can change here.
 ## Progress
 
 Implementation started 2026-10-04 on your PC and ran Phase 0 → Phase 3 without stopping. It stopped partway through
-Phase 3 the same day: the Phase 3 code is in, but nothing new has been seen on screen yet. The rest of Phase 3 and
-Phases 4–9 continue in a Claude cloud session (see [Handoff](#handoff-to-the-cloud-session)). Cloud machines have no
-GPU, so everything that needs WebGPU goes on the [local GPU checks](#local-gpu-checks-run-on-your-pc) list and runs
-on your PC later. This section is updated at the end of every phase; each phase in [10](#10-phases) also gets a
+Phase 3 the same day; a Claude cloud session then finished Phase 3 and wrote Phases 4–9 (see
+[Handoff](#handoff-to-the-cloud-session)). Cloud machines have no GPU, so everything from Phase 3 on is **code done**:
+type-checked, linted, unit-tested and built, but not yet seen on screen. Everything that needs WebGPU is on the
+[local GPU checks](#local-gpu-checks-run-on-your-pc) list (G1–G23) to run on your PC. This section is updated at the end of every phase; each phase in [10](#10-phases) also gets a
 **Built** note.
 
 | Phase | Milestone | Status | Short summary |
@@ -58,7 +58,7 @@ on your PC later. This section is updated at the end of every phase; each phase 
 | 6 — Ecosystem and evolution | M3 | **Code done** (G11–G14 pending) | The ecology worker: the stream as 50 m stretches with their water (temperature, oxygen and its dawn low, light, insects, algae, nutrients), fish cohorts with five heritable traits (breeder's equation; predators pull color one way, mates the other; koi patterns mix), the mahseer's monsoon run, the kingfisher, weather that follows the seasons with a catchment (rain raises and clouds the stream after a delay), plants that grow, spread and die back, individual fish near the camera handed off from the cohorts, rain, rain rings, wet ground, lightning, the Ecosystem panel with graphs, saves version 2. Reproducible, balanced for 10 years, both adaptation experiments pass (unit tests). Not seen on screen yet |
 | 7 — Spatial nature audio | M4 | **Code done** (G15–G16 pending) | Every sound generated live in code (C27): the stream through 8 emitters that slide along the river with you, mixing pool gurgles, riffle babble and rapids roar from the solved flow; the waterfall; wind shaped by the visuals' gusts with leaf, pine, grass and bamboo rustle (knocks and creaks); rain on leaves, rock and water; thrushes, songbirds, cicadas and frogs by hour and season; the kingfisher; rising fish; thunder after lightning; footsteps by surface; the underwater muffle; HRTF panners; sound on/off and volume. Not heard yet |
 | 8 — Photo mode and time-lapse | M4 | **Code done** (G17–G19 pending) | Photo mode (P): a free camera with collision, a real lens (focal length, aperture, focus; click to focus), exposure, six filters, a thirds grid, hide the controls; stills accumulate 64–256 frames with sub-pixel, lens-aperture and sun-disk samples (smooth edges, true depth of field and bokeh, soft shadows) and save as PNG up to 4K; time-lapses of a day, a season or a year from a fixed camera or a 2–5 keyframe path, encoded by WebCodecs and muxed by Mediabunny into an MP4 streamed to disk. Recording doesn't change the simulation (unit-tested). Not seen on screen yet |
-| 9 — Polish and hardening | M4 | Not started | |
+| 9 — Polish and hardening | M4 | **Code done** (G20–G23 pending) | Dynamic resolution that holds the frame rate within each preset's range; Low/Medium/High/Ultra presets now also set the fish budget; a settings dialog (graphics, comfort, sound, controls guide) kept in the browser; a lost GPU device saves the valley and reloads it from the autosave (a lighter preset if it repeats); the engine loads after the start screen (586 KB first page); install as an app (manifest and icon); README and controls guide; `tools/fresh-clone.ts` (passes in the cloud); an hour-long soak test written. Not seen on screen yet |
 
 ### Open points and pending items
 
@@ -70,17 +70,17 @@ on your PC later. This section is updated at the end of every phase; each phase 
 | P4 | **KTX-Software** isn't in winget; its installer (v4.4.2) was started but the admin prompt was cancelled. Textures ship as WebP until it's installed (KTX2 compression in `pnpm assets` is skipped). | You (run the installer) | Phase 0 | Open |
 | P5 | three.js reports total GPU time only, not per pass. Pass costs are measured by switching presets (see Phase 0 Built). | — | Phase 0 | Accepted |
 | P6 | **Reference photos** of monsoon mountain streams for the golden-shot comparison. I can't download copyrighted photos into the repo; a personal folder of yours (kept out of Git) works best. Until then the shots are judged by eye. | You | Phase 1 | Open |
-| P7 | **Volumetric clouds and cloud shadows**: the sky uses three.js SkyMesh with its 2D cloud layer for now (see C7). | Me | Phase 1 | Open (Phase 6 weather or Phase 9) |
+| P7 | **Volumetric clouds and cloud shadows**: the sky uses three.js SkyMesh with its 2D cloud layer for now (see C7). Phase 6 drives its cover from the weather; raymarched clouds were not built in Phases 6–9. | Me | Phase 1 | Open (after the GPU checks) |
 | P8 | **First load compiles shaders for 20–35 s** in a fresh browser profile (Windows D3D12 shader compilation). The loading screen stays up until frames are smooth, and your own Chrome caches the shaders, so later loads are faster. | Me | Phase 1 | Mitigated |
-| P10 | **Terrain detail normal maps**: D3D12 allows 16 samplers per shader stage, so only the rock layer keeps a normal map (meadow and pebble normals were dropped). Packing layers into an array texture would restore them. | Me | Phase 2 | Open (Phase 9) |
+| P10 | **Terrain detail normal maps**: D3D12 allows 16 samplers per shader stage, so only the rock layer keeps a normal map (meadow and pebble normals were dropped). Packing layers into an array texture would restore them. | Me | Phase 2 | Open (later: an array texture) |
 | P11 | **Waterfall spray and mist particles**: built in Phase 3 (`src/sim/particles/spray.ts`, `src/engine/water/Spray.ts`), with splashes for dropped stones. Needs a first look (G1). | — | Phase 2 | **Closed** (code; look in G1) |
 | P12 | Looking up from underwater shows the world above (refracted) but no Snell's window or total internal reflection. | Me | Phase 2 | Accepted |
-| P9 | The main bundle is 5 MB (EZ-Tree inlines its textures). Code-splitting the engine behind the start screen is planned. | Me | Phase 0 | Open (Phase 9) |
+| P9 | The main bundle was 5 MB (EZ-Tree inlines its textures). Phase 9 splits the engine behind the start screen: the first page is 586 KB, and the engine chunk (about 10 MB, 5 MB gzipped, mostly EZ-Tree textures and the Rapier WebAssembly) loads after **Enter the valley**. | — | Phase 0 | **Closed** (Phase 9) |
 | P13 | **The Workshop page and `pnpm bake` (D31)**: decided in Phase 4 that nothing needs them. Erosion runs on the CPU (C8), lite trees stand in for impostors (C10), and catalog thumbnails are rendered live in the app and cached in the browser (C19). The `bake` script was removed (C20). | — | Phase 3 | **Closed** |
 | P14 | **The Phase 3 code hasn't been seen on screen.** It was written, type-checked and unit-tested, but the visual checks were stopped. Reading the code at the handoff found one bug (the plants and air particles were never added to the scene; fixed). Expect a few more fixes after G1. | You (G1), then the cloud session | Phase 3 | Open |
 | P15 | **The builder hasn't been seen on screen** (cloud session, no GPU). Most likely to need a fix after G6: the gizmo (three's `TransformControls` on WebGPU), the thumbnail orientation and lighting (read back from a render target), the overlay drape's texture orientation, and the ghost ring height. The logic behind them (undo, placement rules, edit layer, saving, picking, brushes) is unit-tested. | You (G5, G6), then a session with the fixes | Phase 4 | Open |
 | P16 | **Fish schools can be released but not selected or moved** in the builder. Phase 5 added inspecting and following a single fish (click it in Build, E in Explore); schools stay unmovable on purpose (fish move themselves). | — | Phase 4 | **Closed** (Phase 5) |
-| P17 | **Springs (side brooks) add their water to the stream and bubble where they join**, but there is no visible brook channel running down the bank. | Me | Phase 4 | Open (Phase 9) |
+| P17 | **Springs (side brooks) add their water to the stream and bubble where they join**, but there is no visible brook channel running down the bank. | Me | Phase 4 | Open (later) |
 | P18 | **Weather "Follow the seasons"** gives each season its sky, haze and dawn mist; the choices in the Time & weather panel set clear, overcast, mist, rain, downpour or storm skies. Rain falling, rain rings, wet surfaces and rain raising the discharge came with Phase 6 (look in G12). | — | Phase 4 | **Closed** (Phase 6) |
 | P19 | **The fish haven't been seen on screen.** Most likely to need tuning after G9: pattern scales on each body (spot sizes, stripe widths), fin transparency and the backlight, the banked-turn roll, iridescence strength, and koi pattern variety. | You (G9), then a session with the fixes | Phase 5 | Open |
 | P20 | **GPU minnow and danio schools** (the plan's optional thousands of fish on compute shaders) are not built; all fish are CPU agents (up to 2,000 in the shared buffer). | Me | Phase 5 | Open (optional) |
@@ -89,6 +89,7 @@ on your PC later. This section is updated at the end of every phase; each phase 
 | P24 | **Nobody has listened to the sounds yet** (a cloud session can't). They are generated, not recorded (C27), so expect a tuning pass after G16: the balance between stream, wind and life, how natural the bird songs and frogs sound, rain and thunder levels. Recorded CC0 sounds can replace any of them later (`NatureAudio` plays sample buffers the same way). | You (G16), then a session with the fixes | Phase 7 | Open |
 | P25 | **Photo mode and time-lapses haven't been tried** (no GPU in the cloud session). Most likely to need a fix after G18: how the developing photo shows on screen and the PNG's orientation and colors (both read back from render targets), shadows with the jittered sun (cascaded shadow maps), memory at 4K (the whole pipeline is rebuilt at the output size), and the encoder's choices on your GPU. | You (G17, G18), then a session with the fixes | Phase 8 | Open |
 | P26 | **Long captures are long GPU loads**: 256-sample 4K stills and year-long 4K time-lapses wait for P1 (G19). The defaults stay short: 64 samples at screen size, 1080p time-lapses. | You (after P1) | Phase 8 | Open |
+| P27 | **The Phase 9 pieces haven't been seen on screen**: the settings dialog, dynamic resolution in a heavy view (does the picture stay steady?), the device-lost reload (Chrome's `chrome://gpucrash` triggers one), and installing as an app (an SVG icon and no service worker: current Chrome accepts both, an older one may not offer to install). | You (G21, G22), then a session with the fixes | Phase 9 | Open |
 | P23 | **Fish are shown individually only near the camera** (the two-level hand-off: stretches within about 80 m). Looking down from high in the builder, far stretches show no fish. `?allfish` shows every stretch at once (tests, the fish benchmark). | — | Phase 6 | Accepted |
 
 ### Changes from the plan made during implementation
@@ -124,6 +125,8 @@ on your PC later. This section is updated at the end of every phase; each phase 
 | C28 | 3D sound through three.js `AudioListener` / `PositionalAudio` | Web Audio `PannerNode`s (HRTF) placed directly, the listener set from the camera each frame (`src/audio/AudioEngine.ts`) | The emitters are AudioWorklet nodes moved every 50 ms; three's wrappers would add nothing |
 | C29 | Depth of field in photo mode's live view | The live view shows the sharp range as numbers ("sharp from 3.1 m to 7.4 m"); depth of field and bokeh appear in the photo, from real lens-aperture samples | A post-process blur would be another shader to compile and would look different from the photo |
 | C30 | Accumulation averages the rendered frames | It averages the pipeline's final, tone-mapped frames (with TRAA off, since accumulation does the anti-aliasing and moves the camera) | The pipeline stays untouched. Averaging after tone mapping makes very bright bokeh highlights a little dimmer than a linear average would |
+| C31 | A fresh clone runs `pnpm assets` → `pnpm bake` → `pnpm start` | `pnpm assets` → `pnpm start` (no bake step, C20); `tools/fresh-clone.ts` runs the clone, install, checks, tests and build in a temporary folder | Nothing needs a GPU bake; the tool makes the fresh-clone test repeatable |
+| C32 | Installing as an app | A web manifest with an SVG icon, no service worker (no offline mode) | Current Chrome and Edge install pages without one; the app needs its local server for the COOP/COEP headers anyway |
 | C26 | The discharge slider sets the stream's flow | The slider sets the usual (dry-weather) flow; the seasons and the catchment scale it (about ×0.6 before the monsoon, ×1.4 in it, more for a day or two after heavy rain). "Rain raises the stream" in the Ecosystem panel turns it off; valleys saved before Phase 6 open with it off | Rain raising the discharge after a delay (plan 6.7) needs the stream to follow the weather; old saves keep the stream they had |
 
 ### Local GPU checks (run on your PC)
@@ -152,21 +155,28 @@ wait for P1/P2. Commands assume `pnpm dev` is running, except the benchmark (`pn
 | G17 | **Phase 8 e2e** (`tests/e2e/photo.spec.ts`): P opens photo mode; a 64-frame 1080p still saves as a PNG and is smoother than a single frame; f/1.4 focused at 1.5 m blurs the background more than f/22; a one-day time-lapse records an MP4 (`ftyp`) and leaves the valley a day later; a recorded season gives the same ecosystem (hash) as simply running the season | `pnpm test:e2e tests/e2e/photo.spec.ts` (short GPU runs, about a minute each) | 8 | Open (tests written) |
 | G18 | **First look at photo mode** (`pnpm dev`, P): moving and looking (right-drag), click to focus, the sharp-range readout, filters and exposure, the grid, H to hide the controls; take a 64-frame photo at screen size and compare it with the live view (edges, shadows, depth of field at f/1.4); record a one-day time-lapse at 1080p and play it | Manual, `pnpm dev` | 8 | Open |
 | G19 | **The Phase 8 done-when**: a 256-frame 4K still saves correctly and looks clearly better than the live view; a one-year time-lapse (a frame a day: blossom → monsoon → autumn → snow) records to a playable MP4 | Manual, after P1 (long GPU runs) | 8 | Open (after P1) |
+| G20 | **Fresh clone on your PC**: follow the README from `git clone` (with Git LFS) to `pnpm start` in a new folder, open the app, then install it as an app from the address bar. `npx tsx tools/fresh-clone.ts --assets --keep` automates the first part | Manual + `tools/fresh-clone.ts` | 9 | Open |
+| G21 | **Every earlier phase's checks still pass** (Phase 9 done-when): the whole e2e suite in Chrome and Edge, then the benchmarks | `pnpm test:e2e` (in short batches, one spec at a time), `pnpm bench` | 9 | Open |
+| G22 | **First look at Phase 9**: ⚙ Settings (each preset changes the picture; dynamic resolution steadies a heavy view such as a storm in the bend; field of view, mouse, invert, head bob and softer lightning work and are remembered after a reload); open `chrome://gpucrash` in another tab: Riffle says the graphics device stopped and comes back from the autosave | Manual, `pnpm start` | 9 | Open |
+| G23 | **Hour-long session**: no crashes or memory growth (`tests/e2e/soak.spec.ts` tours every mode and samples memory each minute) | `SOAK_MINUTES=60 pnpm test:e2e tests/e2e/soak.spec.ts --project=chrome`: a long GPU run, after P1 | 9 | Open (after P1) |
 | G14 | **Season-lapse soak**: 10 minutes at Season lapse (about 5 simulated years): fps steady, no memory growth, the flow re-solves after rain don't hitch | A long GPU run: waits for P1 | 6 | Open (after P1) |
 
 ### Handoff to the cloud session
 
-State on 2026-10-04: Phases 0–2 are done; the Phase 3 code is committed and passes the typecheck, lint, Prettier and
-40 unit tests, but none of it has been seen on screen (P14). Working rules for any session are in `CLAUDE.md` at the
+State on 2026-10-04, end of the cloud session: Phases 0–2 are done; Phases 3–9 are **code done** and pass the
+typecheck, lint, Prettier, 155 unit tests and the build (the same set CI runs), but nothing from Phase 3 on has been
+seen on screen or heard (P14, P15, P19, P21, P24, P25, P27). Working rules for any session are in `CLAUDE.md` at the
 repo root.
+
+**Next, on your PC:** the G rows in order (G1 → G23), a few at a time, with short runs until P1 is closed. Each one
+that fails becomes a fix in a session with a GPU; the P rows say what is most likely to need one.
 
 **Next, in order:**
 1. ~~Finish Phase 3~~ **Done** in the cloud session: the e2e tests (G3), the storm benchmark (G4), the waterfall
    spray and mist (P11), the checklist and the Built note. Phase 3 stays *code done, GPU checks pending* until G1–G4
    pass on your PC.
-2. Phases 4–9 in order, using each phase's text and **Done when** list in [10](#10-phases). After each phase: update the
-   Progress table, add a Built note, write `docs/phases/phase-N.md`, add a G row for every check that needs a GPU, add
-   P rows for open points, then commit and push.
+2. ~~Phases 4–9 in order~~ **Done** in the cloud session (code), each with its Built note, `docs/phases/phase-N.md`,
+   G rows, P rows and C rows.
 3. ~~Phase 4 needs a decision on catalog thumbnails (P13)~~ Decided: rendered live in the app (C19).
 
 **What a cloud machine can and can't do here:**
@@ -1314,6 +1324,31 @@ window and desktop shortcut), a README and controls guide, and a fresh-clone tes
 **Done when:** an hour-long session runs without crashes or memory growth (once the hardware check has passed); every
 earlier phase's checks still pass; the README is enough to set up the project from a fresh clone (clone, which pulls
 `assets-src/` through LFS → `pnpm install` → `pnpm assets` → `pnpm bake` → `pnpm start`).
+
+**Built (2026-10-04, cloud session; code done, not seen on screen yet, see P27 and G20–G23):**
+- **Dynamic resolution** (`src/perf/resolution.ts`): watches GPU time (or frame time when timestamps aren't
+  available), drops the render scale a step when frames run over budget for over half a second (bigger steps when
+  far over), and raises it after four seconds with room, within each preset's range; a single slow frame (a shader
+  compiling) is ignored. TRAA upscales to the screen. Off in benchmarks and during captures.
+- **Presets** (`src/state/quality.ts`): Low, Medium, High and Ultra set the post-processing chain (as before), the
+  render scale and its dynamic range, the grass density and now the fish budget near you.
+- **Settings** (`src/app/shell/SettingsDialog.tsx`, ⚙ in the top bar): quality preset, dynamic resolution, a 30 or 60
+  fps cap; comfort: field of view, mouse sensitivity, invert Y, head bob, softer lightning (no bright flashes or
+  flicker); volume; and the controls guide. All kept in this browser (`src/state/preferences.ts`).
+- **A lost GPU device** (`src/app/recovery.ts`): Riffle shows that the graphics device stopped, saves the valley (its
+  state lives on the CPU and in the workers), and reloads from the autosave; a second loss within five minutes
+  reloads one preset lighter.
+- **Code-splitting** (`src/app/boot.ts`, closes P9): the start screen is 586 KB; the engine loads after Enter.
+- **`pnpm start`** builds once and serves the optimized app; **install as an app** from Chrome or Edge with the web
+  manifest and icon (C32).
+- **README** rewritten for a fresh clone (requirements, steps, controls, saving, photos, troubleshooting, commands);
+  **`tools/fresh-clone.ts`** clones into a temporary folder and runs install, typecheck, lint, format check, unit tests
+  and the build: it passes in the cloud session (C31).
+- **Hour-long soak test** (`tests/e2e/soak.spec.ts`, `SOAK_MINUTES`): tours exploring, building, a season lapse,
+  every weather, photo mode and overlays, sampling the JavaScript heap and GPU geometries and textures once a minute.
+- **Tests**: 155 unit tests (+8): dynamic resolution (drops until frames fit, climbs back without hunting, ignores a
+  single slow frame), the device-lost plan, preferences, presets and the overlay color scale.
+- **Not met yet**: the hour-long run waits for P1 (G23); "every earlier phase's checks still pass" is G21.
 
 ---
 

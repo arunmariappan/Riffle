@@ -29,6 +29,8 @@ export class ExplorePlayer {
   yaw = 0;
   pitch = 0;
   settings: PlayerSettings = { fov: 68, mouseSensitivity: 0.0022, headBob: false };
+  /** Mouse up looks down (comfort setting). */
+  invertY = false;
   /** 0 on land, 0..1 wading depth fraction, >1 swimming. */
   waterDepth = 0;
   swimming = false;
@@ -81,7 +83,8 @@ export class ExplorePlayer {
   update(dt: number, input: Input, camera: THREE.PerspectiveCamera): void {
     const [mx, my] = input.takeMouse();
     this.yaw -= mx * this.settings.mouseSensitivity;
-    this.pitch = THREE.MathUtils.clamp(this.pitch - my * this.settings.mouseSensitivity, -1.45, 1.45);
+    const dy = this.invertY ? -my : my;
+    this.pitch = THREE.MathUtils.clamp(this.pitch - dy * this.settings.mouseSensitivity, -1.45, 1.45);
 
     const forward = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
     const right = new THREE.Vector3(-forward.z, 0, forward.x);
