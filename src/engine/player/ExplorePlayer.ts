@@ -62,6 +62,11 @@ export class ExplorePlayer {
     this.position.copy(start);
   }
 
+  /** Standing on the ground (footsteps). */
+  get onGround(): boolean {
+    return this.grounded;
+  }
+
   setWater(water: WaterQuery | null): void {
     this.water = water;
   }

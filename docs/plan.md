@@ -56,7 +56,7 @@ on your PC later. This section is updated at the end of every phase; each phase 
 | 4 — Builder | M2 | **Code done** (G5–G6 pending) | UI shell and start screen (continue, open a file), builder camera, catalog with live thumbnails, drag and drop with a ghost and placement reasons, stones that fall and settle with Rapier, scatter/eraser/grass brushes, springs, gizmo and multi-select, 100-step undo/redo, Water/Wind/Trees/Time & weather panels, flow and depth/speed overlays, OPFS autosave and `.riffle` files. Not seen on screen yet |
 | 5 — Fish | M3 | **Code done** (G7–G10 pending) | All six species from content files with their own bodies, fins and patterns (stripes, pearl spots, leopard spots, koi patches, gold metallic scales, a shining lateral line), iridescence and backlit fins; genes per fish; habitat seeking, loaches clinging in the rapids, rises to insects, food, curiosity, night rest, koi gliding; the pond for koi; inspect and follow; a 500-fish benchmark. Not seen on screen yet |
 | 6 — Ecosystem and evolution | M3 | **Code done** (G11–G14 pending) | The ecology worker: the stream as 50 m stretches with their water (temperature, oxygen and its dawn low, light, insects, algae, nutrients), fish cohorts with five heritable traits (breeder's equation; predators pull color one way, mates the other; koi patterns mix), the mahseer's monsoon run, the kingfisher, weather that follows the seasons with a catchment (rain raises and clouds the stream after a delay), plants that grow, spread and die back, individual fish near the camera handed off from the cohorts, rain, rain rings, wet ground, lightning, the Ecosystem panel with graphs, saves version 2. Reproducible, balanced for 10 years, both adaptation experiments pass (unit tests). Not seen on screen yet |
-| 7 — Spatial nature audio | M4 | Not started | |
+| 7 — Spatial nature audio | M4 | **Code done** (G15–G16 pending) | Every sound generated live in code (C27): the stream through 8 emitters that slide along the river with you, mixing pool gurgles, riffle babble and rapids roar from the solved flow; the waterfall; wind shaped by the visuals' gusts with leaf, pine, grass and bamboo rustle (knocks and creaks); rain on leaves, rock and water; thrushes, songbirds, cicadas and frogs by hour and season; the kingfisher; rising fish; thunder after lightning; footsteps by surface; the underwater muffle; HRTF panners; sound on/off and volume. Not heard yet |
 | 8 — Photo mode and time-lapse | M4 | Not started | |
 | 9 — Polish and hardening | M4 | Not started | |
 
@@ -86,6 +86,7 @@ on your PC later. This section is updated at the end of every phase; each phase 
 | P20 | **GPU minnow and danio schools** (the plan's optional thousands of fish on compute shaders) are not built; all fish are CPU agents (up to 2,000 in the shared buffer). | Me | Phase 5 | Open (optional) |
 | P21 | **The Phase 6 visuals haven't been seen on screen**: rain streaks, rings on the water, wet ground and stones, the lightning flash, the kingfisher, the Ecosystem panel's graphs and the ecology overlays. Most likely to need tuning after G12–G13: rain density and brightness, the ring size, how dark wet ground gets, the flash strength, the bird's scale and colors. The simulation behind them is unit-tested. | You (G12, G13), then a session with the fixes | Phase 6 | Open |
 | P22 | **Trees and grass don't take part in the plant ecology yet**: ground plants and water plants grow, spread and die back (C25), but trees stay as placed and the grass density doesn't respond to moisture (only its look follows the season). | Me | Phase 6 | Open (later) |
+| P24 | **Nobody has listened to the sounds yet** (a cloud session can't). They are generated, not recorded (C27), so expect a tuning pass after G16: the balance between stream, wind and life, how natural the bird songs and frogs sound, rain and thunder levels. Recorded CC0 sounds can replace any of them later (`NatureAudio` plays sample buffers the same way). | You (G16), then a session with the fixes | Phase 7 | Open |
 | P23 | **Fish are shown individually only near the camera** (the two-level hand-off: stretches within about 80 m). Looking down from high in the builder, far stretches show no fish. `?allfish` shows every stretch at once (tests, the fish benchmark). | — | Phase 6 | Accepted |
 
 ### Changes from the plan made during implementation
@@ -117,6 +118,8 @@ on your PC later. This section is updated at the end of every phase; each phase 
 | C23 | One instanced mesh per body template | One per species: each has its own fins (forked, flowing, rounded, suction), barbels and pattern shader | Each species' pattern compiles to its own small shader instead of one big branching one |
 | C24 | Environment grids of 4 m cells (about 250 × 250) in the ecology worker | The environment per stretch (about 50 m): water temperature, oxygen and its dawn minimum, light, insects, algae, nutrients, turbidity. Canopy shade and the overlays use a 4 m grid | The fish cohorts live per stretch (D19), so that is the scale they read; it keeps a 10-year run near 1 s and exactly reproducible |
 | C25 | Every plant takes part, and grass and plant carpets are density fields re-scattered by tile | Ground plants and water plants grow, spread (wind seeds downwind, fragments and plantlets downstream, runners) and die back as individuals, each with a growth-versus-spread gene; trees and grass stay as placed (P22) | The individual plants are where the spreading shows; tolerance curves for them are in their JSON files |
+| C27 | Sounds from freesound.org (CC0) or your recordings | Every sound is generated in code: water from bubbles (Minnaert resonances) and filtered noise, wind from noise shaped by the same gusts as the visuals, rain drop by drop, bird songs, cicadas, frogs, thunder and footsteps synthesized fresh each time (`src/audio/dsp/`) | No downloads or licenses, nothing ever loops (the plan's 10-minute test), and every sound follows the simulation's numbers directly |
+| C28 | 3D sound through three.js `AudioListener` / `PositionalAudio` | Web Audio `PannerNode`s (HRTF) placed directly, the listener set from the camera each frame (`src/audio/AudioEngine.ts`) | The emitters are AudioWorklet nodes moved every 50 ms; three's wrappers would add nothing |
 | C26 | The discharge slider sets the stream's flow | The slider sets the usual (dry-weather) flow; the seasons and the catchment scale it (about ×0.6 before the monsoon, ×1.4 in it, more for a day or two after heavy rain). "Rain raises the stream" in the Ecosystem panel turns it off; valleys saved before Phase 6 open with it off | Rain raising the discharge after a delay (plan 6.7) needs the stream to follow the weather; old saves keep the stream they had |
 
 ### Local GPU checks (run on your PC)
@@ -140,6 +143,8 @@ wait for P1/P2. Commands assume `pnpm dev` is running, except the benchmark (`pn
 | G11 | **Phase 6 e2e** (`tests/e2e/ecology.spec.ts`): the Ecosystem panel shows the populations and graphs; a season time-lapse moves the valley on (days pass, graph points arrive, populations change); a downpour brings rain drops, wet ground, then within 30 s a stream 30% higher and cloudier; walking down the stream, fish appear out of sight and fold back far away (no more than 2% appear within 20 m ahead or vanish within 50 m); the kingfisher comes by and leaves when switched off; the autosave keeps the ecosystem. Also re-run G7: `fish.spec.ts` now uses `?allfish` | `pnpm test:e2e tests/e2e/ecology.spec.ts`, then `pnpm test:e2e tests/e2e/fish.spec.ts` | 6 | Open (tests written) |
 | G12 | **First look at the weather** (a few minutes, `pnpm dev`): Build → Time & weather → Monsoon downpour: rain streaks tilt with the wind and dim at night, rings dot the stream and the pond, the ground and stones turn darker and glossier and dry afterwards; Storm: lightning flashes (not blinding) and strong gusts; after heavy rain the stream rises and turns cloudy | Manual, `pnpm dev` | 6 | Open |
 | G13 | **First look at the kingfisher, the Ecosystem panel and the hand-off**: the bird's blue back, orange breast and size, perching, flying low, hovering and diving with a splash; the graphs readable; the Oxygen, Light, Temperature and Fish overlays line up with the water; walking along the stream, fish never pop in or out in front of you | Manual, `pnpm dev` (Ecosystem tab; Season lapse for a minute) | 6 | Open |
+| G15 | **Phase 7 e2e** (`tests/e2e/audio.spec.ts`, measured on the mix with an analyser): a click starts the sound; the rapids are louder than the pool and walking between them never jumps; the water speed and wind sliders are audible; diving muffles (cutoff under 1 kHz, the mix much darker); the sound button mutes and is remembered | `pnpm test:e2e tests/e2e/audio.spec.ts` | 7 | Open (tests written) |
+| G16 | **Ten-minute listen** with headphones (`pnpm dev`, click once): walk from the rapids to the pool and the waterfall; dawn (thrushes, the chorus), a hot pre-monsoon afternoon (cicadas), a monsoon night (frogs, rain), a storm (thunder after the flash); dive; walk on gravel, moss, leaves and through shallow water; the kingfisher's call. Nothing should repeat noticeably or sound synthetic enough to distract; note anything to tune (P24) | Manual, `pnpm dev` (Time & weather sets the hour, day and weather) | 7 | Open |
 | G14 | **Season-lapse soak**: 10 minutes at Season lapse (about 5 simulated years): fps steady, no memory growth, the flow re-solves after rain don't hitch | A long GPU run: waits for P1 | 6 | Open (after P1) |
 
 ### Handoff to the cloud session
@@ -1217,6 +1222,44 @@ monsoon downpour, the underwater filter, and footsteps.
 
 **Done when:** walking from the rapids to the pool changes the sound smoothly; the water speed and wind sliders are
 audible; diving muffles the world; no sound repeats noticeably in a 10-minute listen.
+
+**Built (2026-10-04, cloud session; code done, not heard yet, see P24 and G15–G16):**
+- **Generated sound** (`src/audio/dsp/`, C27): every sound is synthesized in TypeScript, live or fresh for each
+  call, so nothing loops. Shared building blocks (`core.ts`): seeded noise, pink and brown noise, biquad and
+  one-pole filters, eased parameters, wandering levels, a bank of ringing bubbles (Minnaert resonances whose pitch
+  rises as they surface) and a soft limiter.
+- **The stream** (`water.ts`, `scene.ts`): pools gurgle with a few big, low bubbles over a soft hush; riffles
+  babble with many small bubbles and a mid-range wash; rapids roar with dense tiny bubbles over broadband noise; the
+  waterfall adds a deep rumble. Eight emitters slide along the river to the cross-sections nearest you (continuously,
+  so nothing jumps), each mixing the three characters from its section's solved current, foam and depth; loudness
+  follows the water speed and discharge. The waterfall has its own emitter at its foot.
+- **Wind** (`wind.ts`): stereo noise whose body, hiss and high whistle follow the wind speed and the same gust signal
+  as the visuals (`windStrengthAt` at your position), plus rustle by the plants within 25 m: broad leaves flutter,
+  pines whoosh, grass hisses, bamboo hisses while its culms knock and creak.
+- **Rain** (`rain.ts`): drop by drop, by what they land on around you (canopy, water nearby, rock and open ground):
+  leaf patter rings small resonances, rock ticks, water drops splash and some plink as bubbles; a downpour roars.
+  Built to handle thousands of drops a second cheaply.
+- **Life** (`calls.ts`): whistling thrush songs (glided, human-like whistles), songbird trills, warbles and two-note
+  calls, the kingfisher's sharp "chee", cicada buzzes on hot afternoons, frog croaks on monsoon nights, splashes from
+  rising fish and the diving kingfisher, bubbles underwater. Who sings when comes from the hour, season, air
+  temperature, rain, wind and how close the water is (`ambienceLevels`), and a Poisson scheduler places each call in
+  the trees, on the stream's rocks or at the pond's edge.
+- **Thunder** after each lightning flash, delayed by its distance (343 m/s), a crack up close and a low rolling rumble
+  from afar. **Footsteps** by surface: gravel by the stream, moss, mud after rain, leaf litter under trees, grass,
+  rock and shallow water, from the terrain at your feet.
+- **Underwater**: a low-pass filter that closes the deeper you are, a quieter mix and rising bubbles.
+- **The audio graph** (`src/audio/AudioEngine.ts`, C28): one AudioContext unlocked by your first click or key, three
+  AudioWorklet processors (`src/audio/worklets/`), HRTF panners, a limiter and the volume. `NatureAudio` drives it
+  from the world every 50 ms (the listener every frame).
+- **Controls**: a sound on/off button in the top bar and a volume slider in Time & weather, kept in this browser.
+- **Cost**: about 20% of one core on the audio thread for all of it (measured in Node); the main thread only sets
+  parameters.
+- **Tests**: 138 unit tests (+15): the rapids roar louder than riffles and riffles are brighter than pools; the
+  generated water never repeats (no correlation a second or more apart, or between seeds); the emitters slide with
+  you; the wind gets louder with speed and is truly stereo; bamboo knocks stand out; rain follows its rate; no call is
+  ever the same twice; thunder cracks close and rumbles far; footsteps differ by surface; the underwater filter; who
+  sings when (the dawn chorus, cicadas on hot afternoons, frogs on monsoon nights); the call scheduler's rates. e2e
+  `tests/e2e/audio.spec.ts` (G15).
 
 ### Phase 8 — Photo mode and time-lapse (M)
 

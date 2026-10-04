@@ -45,6 +45,8 @@ function hourLabel(h: number): string {
 export function ControlPanel({ builder }: { builder: Builder }) {
   const settings = useUi((s) => s.settings);
   const clock = useUi((s) => s.clock);
+  const prefs = useUi((s) => s.prefs);
+  const setPrefs = useUi((s) => s.setPrefs);
   const world = builder.world;
   const set = (path: string, v: unknown) => void builder.setSetting(path, v);
   const [species, setSpecies] = useState(() => world.catalog.trees[0]?.id ?? '');
@@ -275,6 +277,17 @@ export function ControlPanel({ builder }: { builder: Builder }) {
             </option>
           ))}
         </select>
+        <div className={styles.subhead}>Sound</div>
+        <SliderRow
+          label="Volume"
+          value={prefs.volume}
+          min={0}
+          max={1}
+          step={0.01}
+          format={(v) => (prefs.muted ? 'muted' : `${Math.round(v * 100)}%`)}
+          onChange={(v) => setPrefs({ volume: v, muted: false })}
+          testId="slider-volume"
+        />
       </Tabs.Content>
 
       <Tabs.Content className={styles.tabBody} value="ecosystem">

@@ -20,6 +20,8 @@ import { useUi, type AppMode } from '../state/store';
 import { decodeSave, type SaveData } from '../save/saveData';
 import { Autosaver } from '../save/autosave';
 import { createSaveStore, openFromDisk, requestPersistence, saveToDisk } from '../save/browserStorage';
+import { NatureAudio } from '../audio/NatureAudio';
+import { unlockAudio } from '../audio/AudioEngine';
 
 declare global {
   interface Window {
@@ -30,6 +32,7 @@ declare global {
       world?: World;
       builder?: Builder;
       autosaver?: Autosaver;
+      audio?: NatureAudio;
       error?: string;
       [key: string]: unknown;
     };
@@ -191,6 +194,7 @@ export function App({ adapterInfo }: { adapterInfo: string }) {
     let createdWorld: World | null = null;
     let createdBuilder: Builder | null = null;
     let autosaver: Autosaver | null = null;
+    let audio: NatureAudio | null = null;
     let timer = 0;
     const cleanups: (() => void)[] = [];
     window.__riffle = { ready: false };
@@ -226,6 +230,20 @@ export function App({ adapterInfo }: { adapterInfo: string }) {
             await thumbs.renderAll(thumbnailJobs(createdWorld), (id, url) => useUi.getState().setThumbnail(id, url));
             thumbs.dispose();
           }
+          if (!params.bench) {
+            // The valley's sound starts at your first click (the browser's audio unlock).
+            const a = new NatureAudio(createdWorld);
+            audio = a;
+            const prefs = useUi.getState().prefs;
+            a.setVolume(prefs.volume, prefs.muted);
+            void a.start().then(() => {
+              const p = useUi.getState().prefs;
+              a.setVolume(p.volume, p.muted);
+            });
+            cleanups.push(created.onFrame((info) => a.update(info.dt)));
+            cleanups.push(useUi.subscribe((st) => a.setVolume(st.prefs.volume, st.prefs.muted)));
+            cleanups.push(() => a.dispose());
+          }
           setWorld(createdWorld);
           setBuilder(createdBuilder);
           setLoading({ label: 'Letting the light settle', fraction: 0.99 });
@@ -259,6 +277,7 @@ export function App({ adapterInfo }: { adapterInfo: string }) {
           world: createdWorld ?? undefined,
           builder: createdBuilder ?? undefined,
           autosaver: autosaver ?? undefined,
+          audio: audio ?? undefined,
         };
         if (params.bench && createdWorld) {
           const result = await runBenchmark(created, createdWorld, params.bench);
@@ -283,6 +302,17 @@ export function App({ adapterInfo }: { adapterInfo: string }) {
       created?.dispose();
     };
   }, [session, params, store]);
+
+  // Browsers allow sound only after you interact: the first click or key press anywhere unlocks it.
+  useEffect(() => {
+    const unlock = () => unlockAudio();
+    window.addEventListener('pointerdown', unlock, { capture: true });
+    window.addEventListener('keydown', unlock, { capture: true });
+    return () => {
+      window.removeEventListener('pointerdown', unlock, { capture: true });
+      window.removeEventListener('keydown', unlock, { capture: true });
+    };
+  }, []);
 
   useEffect(() => {
     const onChange = () => setLocked(document.pointerLockElement === canvasRef.current);

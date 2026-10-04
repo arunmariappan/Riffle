@@ -16,9 +16,11 @@ const MODES: [AppMode, string, string][] = [
   ['photo', 'Photo', 'Photo mode arrives in Phase 8'],
 ];
 
-/** Mode switch and the valley menu (save, open, new). */
+/** Mode switch, sound on/off and the valley menu (save, open, new). */
 export function TopBar({ onMode, onSave, onOpen, onNew, savedAt }: TopBarProps) {
   const mode = useUi((s) => s.mode);
+  const muted = useUi((s) => s.prefs.muted);
+  const setPrefs = useUi((s) => s.setPrefs);
   return (
     <div className={styles.topbar}>
       <span className={styles.brand}>Riffle</span>
@@ -38,6 +40,16 @@ export function TopBar({ onMode, onSave, onOpen, onNew, savedAt }: TopBarProps) 
           </button>
         ))}
       </div>
+      <button
+        className={styles.button}
+        onClick={() => setPrefs({ muted: !muted })}
+        aria-pressed={!muted}
+        aria-label={muted ? 'Sound off' : 'Sound on'}
+        title={muted ? 'Sound off (click to turn on)' : 'Sound on (click to mute)'}
+        data-testid="sound-toggle"
+      >
+        {muted ? '🔇' : '🔊'}
+      </button>
       <DropdownMenu.Root>
         <DropdownMenu.Trigger className={styles.button}>Valley ▾</DropdownMenu.Trigger>
         <DropdownMenu.Portal>

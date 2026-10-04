@@ -251,6 +251,11 @@ export class EcologySystem {
     return best;
   }
 
+  /** Canopy shade 0..1 over a point (audio: rain on leaves, leaf litter underfoot). */
+  shadeAt(x: number, z: number): number {
+    return shadeAt(this.canopy, x, z);
+  }
+
   // --- Per frame ----------------------------------------------------------------------------------------------
 
   update(dt: number): void {

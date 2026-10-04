@@ -5,6 +5,7 @@
 import { create } from 'zustand';
 import type { UndoState } from '../builder/undo';
 import { defaultSettings, type ValleySettings } from './settings';
+import { loadPreferences, savePreferences, type Preferences } from './preferences';
 import type { ItemCategory } from '../builder/editLayer';
 
 export type AppMode = 'explore' | 'builder' | 'photo';
@@ -103,6 +104,9 @@ export interface UiState {
   busy: string | null;
   inspect: FishInfo | null;
   ecology: EcologyUi | null;
+  /** Your preferences (sound), kept in this browser. */
+  prefs: Preferences;
+  setPrefs: (p: Partial<Preferences>) => void;
   set: (partial: Partial<UiState>) => void;
   toast: (text: string, kind?: Toast['kind']) => void;
   dismiss: (id: number) => void;
@@ -132,6 +136,13 @@ export const useUi = create<UiState>((set) => ({
   busy: null,
   inspect: null,
   ecology: null,
+  prefs: loadPreferences(),
+  setPrefs: (p) =>
+    set((s) => {
+      const prefs = { ...s.prefs, ...p };
+      savePreferences(prefs);
+      return { prefs };
+    }),
   set: (partial) => set(partial),
   toast: (text, kind = 'info') => {
     const id = toastId++;
