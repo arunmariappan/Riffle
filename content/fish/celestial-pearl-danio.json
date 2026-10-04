@@ -1,0 +1,44 @@
+{
+  "id": "celestial-pearl-danio",
+  "name": "Celestial pearl danio",
+  "plural": "Celestial pearl danios",
+  "description": "A tiny blue-grey fish scattered with pearl spots, with an orange belly and orange fins striped in black. Hides among plants in shallow margins and at the pond edge.",
+  "category": "fish",
+  "body": { "template": "torpedo", "fins": "rounded", "length": [0.02, 0.028] },
+  "pattern": {
+    "kind": "pearls",
+    "back": "#3a4a5a",
+    "flank": "#5a7488",
+    "belly": "#e8742a",
+    "accent": "#f2ead0",
+    "accent2": "#e05a1e",
+    "fin": "#e8642a",
+    "finTip": "#141414",
+    "metal": 0.2,
+    "iridescence": 0.35
+  },
+  "behavior": {
+    "cruise": 0.2,
+    "burst": 0.7,
+    "comfortCurrent": 0.1,
+    "depthPreference": 0.4,
+    "schooling": { "separation": 0.05, "alignment": 0.5, "cohesion": 0.6, "radius": 0.5 },
+    "shyness": 0.75,
+    "rheotaxis": 0.5,
+    "curiosity": 0.15
+  },
+  "habitat": { "depth": [0.08, 1], "flow": [0, 0.2], "temperature": [16, 27], "oxygenMin": 5 },
+  "diet": ["insects", "algae"],
+  "spawning": { "seasons": ["premonsoon", "monsoon"], "ground": "plants" },
+  "life": { "maturityYears": 0.4, "lifespanYears": 3, "fecundity": 30 },
+  "genes": {
+    "bodySize": { "mean": 0.5, "sd": 0.12 },
+    "swimStrength": { "mean": 0.4, "sd": 0.1 },
+    "preferredFlow": { "mean": 0.35, "sd": 0.12 },
+    "brightness": { "mean": 0.65, "sd": 0.1 },
+    "shyness": { "mean": 0.75, "sd": 0.1 },
+    "heritability": 0.4,
+    "mutation": 0.02
+  },
+  "school": { "size": 20, "max": 80 }
+}

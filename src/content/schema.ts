@@ -154,6 +154,101 @@ export const waterPlantSchema = z.object({
   look: seasonalLookSchema,
 });
 
+const seasonEnum = z.enum(['winter', 'spring', 'premonsoon', 'monsoon', 'autumn']);
+/** A heritable trait's starting mean and spread across the population (plan D20). */
+const geneSchema = z.object({ mean: z.number(), sd: z.number() });
+
+/** Fish species (plan 6.5, 7): body, pattern and palette, behavior, habitat, diet, spawning and genes. */
+export const fishSchema = z.object({
+  id: z.string().regex(/^[a-z0-9-]+$/),
+  name: z.string(),
+  /** Plural for messages ("Hillstream loaches need fast water"). */
+  plural: z.string(),
+  description: z.string().default(''),
+  category: z.literal('fish'),
+  body: z.object({
+    template: z.enum(['torpedo', 'deep', 'long', 'flat']),
+    fins: z.enum(['forked', 'flowing', 'rounded', 'sucker']).default('forked'),
+    /** Adult body length range, meters. */
+    length: range,
+    /** Koi and mahseer carry barbels at the mouth. */
+    barbels: z.boolean().default(false),
+  }),
+  pattern: z.object({
+    kind: z.enum(['stripes', 'pearls', 'leopard', 'koi', 'gold', 'plain']),
+    back: rgb,
+    flank: rgb,
+    belly: rgb,
+    /** Stripe, pearl spots, leopard spots or koi patches. */
+    accent: rgb,
+    /** Second stripe (the barb's red line) or second koi patch color. */
+    accent2: rgb,
+    fin: rgb,
+    finTip: rgb,
+    /** Metallic scales 0..1 (golden mahseer high). */
+    metal: z.number().default(0.3),
+    /** Thin-film iridescence 0..1. */
+    iridescence: z.number().default(0.2),
+  }),
+  behavior: z.object({
+    /** Cruise and burst speed relative to the water, m/s. */
+    cruise: z.number(),
+    burst: z.number(),
+    /** Preferred current speed; above it they look for shelter. */
+    comfortCurrent: z.number(),
+    /** Preferred height in the water column, 0 bottom .. 1 surface. */
+    depthPreference: z.number(),
+    schooling: z.object({ separation: z.number(), alignment: z.number(), cohesion: z.number(), radius: z.number() }),
+    /** 0 bold .. 1 shy. */
+    shyness: z.number(),
+    /** How strongly it faces upstream and holds station, 0..1. */
+    rheotaxis: z.number().default(0.8),
+    /** Clings to rocks on the bed (hillstream loach). */
+    clings: z.boolean().default(false),
+    /** Glides between tail strokes (koi). */
+    glides: z.boolean().default(false),
+    /** Comes closer when you stand still, 0..1. */
+    curiosity: z.number().default(0.3),
+  }),
+  habitat: z.object({
+    /** Water depth it can live in, meters. */
+    depth: range,
+    /** Current speed it can live in, m/s. */
+    flow: range,
+    /** Water temperature it can live in, °C. */
+    temperature: range,
+    /** Minimum dissolved oxygen, mg/L. */
+    oxygenMin: z.number().default(5),
+    /** Restrict releases to the pond (koi). */
+    pondOnly: z.boolean().default(false),
+  }),
+  diet: z.array(z.enum(['insects', 'algae', 'plants', 'fish', 'detritus'])).default(['insects']),
+  spawning: z.object({
+    seasons: z.array(seasonEnum),
+    ground: z.enum(['gravel', 'plants', 'pond']),
+    /** Moves upstream to spawn when the monsoon raises the water (golden mahseer). */
+    migrates: z.boolean().default(false),
+  }),
+  life: z.object({
+    maturityYears: z.number(),
+    lifespanYears: z.number(),
+    /** Eggs per spawning female that hatch. */
+    fecundity: z.number(),
+  }),
+  genes: z.object({
+    bodySize: geneSchema,
+    swimStrength: geneSchema,
+    preferredFlow: geneSchema,
+    brightness: geneSchema,
+    shyness: geneSchema,
+    /** Fraction of a trait's variation that is inherited (plan D20). */
+    heritability: z.number().default(0.4),
+    mutation: z.number().default(0.02),
+  }),
+  school: z.object({ size: z.number().int(), max: z.number().int() }),
+});
+
+export type FishDef = z.infer<typeof fishSchema>;
 export type TreeDef = z.infer<typeof treeSchema>;
 export type BushDef = z.infer<typeof bushSchema>;
 export type WaterPlantDef = z.infer<typeof waterPlantSchema>;

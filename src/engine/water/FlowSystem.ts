@@ -2,8 +2,9 @@ import * as THREE from 'three/webgpu';
 import * as Comlink from 'comlink';
 import { uniform, uv, vec3, vec4, float, mx_noise_float, smoothstep, mix, texture, attribute } from 'three/tsl';
 import type { Valley } from '../../sim/terrain/valley';
+import { sampleHeight } from '../../sim/terrain/heightfield';
 import { buildRiverPath, buildPathLookup, worldToStream, type RiverPath, type PathLookup } from '../../sim/flow/path';
-import type { Stone, SolveStats } from '../../sim/flow/field';
+import type { Stone, SolveStats, SideInflow } from '../../sim/flow/field';
 import { DoubleBuffer } from '../../sim/shared/doubleBuffer';
 import { SharedFlowSampler, type SharedFlowConfig } from '../../sim/flow/sharedSampler';
 import type { FlowWorkerApi, FlowLayout } from '../../workers/flow.worker';
@@ -19,6 +20,8 @@ export interface FlowSample {
   foam: number;
   shelter: number;
   bed: number;
+  /** True in the still backwater pond. */
+  pond?: boolean;
 }
 
 const CELLS_ACROSS = 49;
@@ -117,6 +120,7 @@ export class FlowSystem {
       controls: this.valley.controls,
       bounds: { minX: -half, minZ: -half, maxX: half, maxZ: half },
       pond: { x: pond.x, z: pond.z, radius: pond.radius, section: pond.section },
+      pondBed: this.pondBedGrid(),
     };
     this.sampler = new SharedFlowSampler(this.config);
     this.lastStats = result.stats;
@@ -130,6 +134,21 @@ export class FlowSystem {
     this.buildMeshes();
     this.pull(true);
     if (stones.length) await this.setStones(stones);
+  }
+
+  /** Bed heights over the pond at 0.5 m, for the shared sampler (fish need pond water too). */
+  private pondBedGrid(): { originX: number; originZ: number; cell: number; size: number; heights: Float32Array } {
+    const pond = this.valley.pond;
+    const cell = 0.5;
+    const half = pond.radius + 8;
+    const size = Math.ceil((half * 2) / cell) + 1;
+    const originX = pond.x - half;
+    const originZ = pond.z - half;
+    const heights = new Float32Array(size * size);
+    for (let j = 0; j < size; j++)
+      for (let i = 0; i < size; i++)
+        heights[j * size + i] = sampleHeight(this.valley.heightfield, originX + i * cell, originZ + j * cell);
+    return { originX, originZ, cell, size, heights };
   }
 
   /** Copies new results from shared memory into textures and meshes (call every frame; cheap when unchanged). */
@@ -335,6 +354,36 @@ export class FlowSystem {
     return (this.levels[this.valley.pond.section] as number) ?? 0;
   }
 
+  /** The waterfall's lip, direction, width and levels (spray and mist, audio). */
+  waterfallInfo(): {
+    x: number;
+    z: number;
+    tx: number;
+    tz: number;
+    nx: number;
+    nz: number;
+    halfWidth: number;
+    top: number;
+    foot: number;
+    strength: number;
+  } {
+    const p = this.path;
+    const w = this.valley.profile.waterfall.section;
+    const i = Math.max(0, w - 1);
+    return {
+      x: p.points[i * 2] as number,
+      z: p.points[i * 2 + 1] as number,
+      tx: p.tangents[i * 2] as number,
+      tz: p.tangents[i * 2 + 1] as number,
+      nx: p.normals[i * 2] as number,
+      nz: p.normals[i * 2 + 1] as number,
+      halfWidth: (this.valley.profile.halfWidth[i] as number) * 0.85,
+      top: this.waterfallTop.value as number,
+      foot: (this.waterfallTop.value as number) - (this.waterfallDrop.value as number) + 0.3,
+      strength: (this.discharge * this.speedMultiplier) / 4,
+    };
+  }
+
   private updateLevelMap(): void {
     const hf = this.valley.heightfield;
     const toHalf = THREE.DataUtils.toHalfFloat;
@@ -395,6 +444,19 @@ export class FlowSystem {
     this.lastStats = await this.api.setStones(near, changed);
     this.pull();
     return this.lastStats;
+  }
+
+  /** Side brooks from the spring tool (plan 6.2). */
+  async setInflows(inflows: SideInflow[]): Promise<void> {
+    this.lastStats = (await this.api?.setInflows(inflows)) ?? null;
+    this.pull();
+  }
+
+  /** Cross-section and bank nearest a world point (the spring tool), or null away from the stream. */
+  bankAt(x: number, z: number): { section: number; bank: 'left' | 'right'; offset: number } | null {
+    const sc = this.streamCoords(x, z);
+    if (!sc) return null;
+    return { section: Math.round(sc.section), bank: sc.offset < 0 ? 'left' : 'right', offset: sc.offset };
   }
 
   async setDischarge(q: number): Promise<void> {

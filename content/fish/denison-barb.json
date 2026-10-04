@@ -1,0 +1,44 @@
+{
+  "id": "denison-barb",
+  "name": "Denison barb",
+  "plural": "Denison barbs",
+  "description": "A slim torpedo with a red line over a black stripe and a yellow-and-black tail; fast, tight schools that hold against the current in the riffles.",
+  "category": "fish",
+  "body": { "template": "torpedo", "fins": "forked", "length": [0.1, 0.15] },
+  "pattern": {
+    "kind": "stripes",
+    "back": "#6f7a52",
+    "flank": "#c8ccc0",
+    "belly": "#e8e6dc",
+    "accent": "#141414",
+    "accent2": "#d42a1c",
+    "fin": "#d8d0b8",
+    "finTip": "#e8c43a",
+    "metal": 0.35,
+    "iridescence": 0.25
+  },
+  "behavior": {
+    "cruise": 0.6,
+    "burst": 1.6,
+    "comfortCurrent": 0.45,
+    "depthPreference": 0.45,
+    "schooling": { "separation": 0.25, "alignment": 0.9, "cohesion": 0.55, "radius": 1.6 },
+    "shyness": 0.5,
+    "rheotaxis": 0.9,
+    "curiosity": 0.3
+  },
+  "habitat": { "depth": [0.22, 4], "flow": [0, 1.4], "temperature": [15, 26], "oxygenMin": 6 },
+  "diet": ["insects", "algae"],
+  "spawning": { "seasons": ["monsoon"], "ground": "gravel" },
+  "life": { "maturityYears": 1, "lifespanYears": 5, "fecundity": 40 },
+  "genes": {
+    "bodySize": { "mean": 0.5, "sd": 0.12 },
+    "swimStrength": { "mean": 0.6, "sd": 0.1 },
+    "preferredFlow": { "mean": 0.5, "sd": 0.12 },
+    "brightness": { "mean": 0.6, "sd": 0.1 },
+    "shyness": { "mean": 0.5, "sd": 0.12 },
+    "heritability": 0.4,
+    "mutation": 0.02
+  },
+  "school": { "size": 18, "max": 60 }
+}

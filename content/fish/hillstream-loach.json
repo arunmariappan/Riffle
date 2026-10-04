@@ -1,0 +1,45 @@
+{
+  "id": "hillstream-loach",
+  "name": "Hillstream loach",
+  "plural": "Hillstream loaches",
+  "description": "A flat, leopard-spotted fish whose wide fins work like suction cups. Clings to rocks in the rapids and grazes algae; the fastest water is its home.",
+  "category": "fish",
+  "body": { "template": "flat", "fins": "sucker", "length": [0.05, 0.08] },
+  "pattern": {
+    "kind": "leopard",
+    "back": "#6a5838",
+    "flank": "#a08858",
+    "belly": "#d8ccb0",
+    "accent": "#2a2016",
+    "accent2": "#4a3a22",
+    "fin": "#9a8460",
+    "finTip": "#3a2e1e",
+    "metal": 0.05,
+    "iridescence": 0.05
+  },
+  "behavior": {
+    "cruise": 0.35,
+    "burst": 1.4,
+    "comfortCurrent": 1.5,
+    "depthPreference": 0,
+    "schooling": { "separation": 0.15, "alignment": 0.1, "cohesion": 0.1, "radius": 0.6 },
+    "shyness": 0.5,
+    "rheotaxis": 1,
+    "clings": true,
+    "curiosity": 0.1
+  },
+  "habitat": { "depth": [0.05, 1.2], "flow": [0.4, 2.5], "temperature": [12, 24], "oxygenMin": 7 },
+  "diet": ["algae", "detritus"],
+  "spawning": { "seasons": ["spring", "premonsoon"], "ground": "gravel" },
+  "life": { "maturityYears": 1, "lifespanYears": 6, "fecundity": 25 },
+  "genes": {
+    "bodySize": { "mean": 0.5, "sd": 0.12 },
+    "swimStrength": { "mean": 0.65, "sd": 0.1 },
+    "preferredFlow": { "mean": 0.7, "sd": 0.1 },
+    "brightness": { "mean": 0.4, "sd": 0.1 },
+    "shyness": { "mean": 0.5, "sd": 0.12 },
+    "heritability": 0.4,
+    "mutation": 0.02
+  },
+  "school": { "size": 10, "max": 40 }
+}

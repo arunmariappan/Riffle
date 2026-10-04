@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Engine, EngineStats } from '../engine/Engine';
-import { QUALITY_PRESETS, type QualityPreset } from '../engine/post/pipeline';
+import { QUALITY_PRESETS, type QualityPreset } from '../state/quality';
 
 /** Small performance readout (fps, CPU and GPU ms, draw calls) with a quality switch. Updates at 4 Hz. */
 export function StatsOverlay({

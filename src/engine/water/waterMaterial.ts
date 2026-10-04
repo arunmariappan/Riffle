@@ -1,4 +1,5 @@
 import * as THREE from 'three/webgpu';
+import { globals } from '../globals';
 import {
   attribute,
   texture,
@@ -29,6 +30,9 @@ import {
   mx_noise_float,
   frontFacing,
   length,
+  floor,
+  hash,
+  step,
 } from 'three/tsl';
 
 /** Water look controls (plan 6.2): color by depth, clarity, foam, and the light level for in-scattering. */
@@ -108,7 +112,22 @@ export function createWaterMaterial(
     .sub(1);
   const foamSolver = clamp(flow.b, 0, 1);
   const strength = float(0.32).add(speed.mul(0.45)).add(foamSolver.mul(0.6));
-  const n2 = flowNormal.xy.mul(strength).add(fine.xy.mul(0.25)).add(chop.xy.mul(l.chop));
+  // Raindrop rings (plan 6.7): each cell of a fine grid gets a drop at its own moment; the ring spreads and fades.
+  // Cells light up by the rain rate, so a shower dots the water and a downpour covers it.
+  const rainCell = positionWorld.xz.mul(2.6);
+  const cellId = floor(rainCell);
+  const h1 = hash(cellId.x.add(cellId.y.mul(157)));
+  const h2 = hash(cellId.x.mul(311).add(cellId.y).add(13));
+  const toDrop = fract(rainCell).sub(0.5).sub(vec2(h1, h2).sub(0.5).mul(0.5));
+  const dropDist = length(toDrop);
+  const life = fract(l.time.mul(1.4).add(h1.mul(7)));
+  const ring = smoothstep(0.07, 0, abs(dropDist.sub(life.mul(0.42))))
+    .mul(float(1).sub(life))
+    .mul(step(h2, globals.rain));
+  const ringWorld = toDrop.div(max(dropDist, 0.001)).mul(ring).mul(0.9);
+  // Into the stream's frame (across, along).
+  const ringLocal = vec2(ringWorld.x.mul(frame.y.negate()).add(ringWorld.y.mul(frame.x)), ringWorld.dot(frame));
+  const n2 = flowNormal.xy.mul(strength).add(fine.xy.mul(0.25)).add(chop.xy.mul(l.chop)).add(ringLocal);
   const localN = normalize(vec3(n2.x, 1, n2.y)); // (across, up, along)
   const T = vec3(frame.x, 0, frame.y);
   const N = vec3(frame.y.negate(), 0, frame.x);

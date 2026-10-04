@@ -4,10 +4,12 @@
  */
 import {
   bushSchema,
+  fishSchema,
   stoneSchema,
   treeSchema,
   waterPlantSchema,
   type BushDef,
+  type FishDef,
   type StoneDef,
   type TreeDef,
   type WaterPlantDef,
@@ -18,18 +20,39 @@ export interface Catalog {
   stones: StoneDef[];
   bushes: BushDef[];
   plants: WaterPlantDef[];
+  fish: FishDef[];
   errors: string[];
 }
 
+/** Any catalog item (what the builder's catalog panel lists). */
+export type CatalogItem = TreeDef | StoneDef | BushDef | WaterPlantDef | FishDef;
+
 const files = import.meta.glob('/content/**/*.json', { eager: true, import: 'default' }) as Record<string, unknown>;
 
-const schemas = { trees: treeSchema, stones: stoneSchema, bushes: bushSchema, plants: waterPlantSchema } as const;
+const schemas = {
+  trees: treeSchema,
+  stones: stoneSchema,
+  bushes: bushSchema,
+  plants: waterPlantSchema,
+  fish: fishSchema,
+} as const;
 
 let cached: Catalog | null = null;
 
+/** Finds an item by id in any category. */
+export function findItem(catalog: Catalog, id: string): CatalogItem | undefined {
+  return (
+    catalog.trees.find((i) => i.id === id) ??
+    catalog.stones.find((i) => i.id === id) ??
+    catalog.bushes.find((i) => i.id === id) ??
+    catalog.plants.find((i) => i.id === id) ??
+    catalog.fish.find((i) => i.id === id)
+  );
+}
+
 export function loadCatalog(): Catalog {
   if (cached) return cached;
-  const catalog: Catalog = { trees: [], stones: [], bushes: [], plants: [], errors: [] };
+  const catalog: Catalog = { trees: [], stones: [], bushes: [], plants: [], fish: [], errors: [] };
   for (const [path, data] of Object.entries(files).sort(([a], [b]) => a.localeCompare(b))) {
     const category = (data as { category?: string }).category;
     if (!category || !(category in schemas)) {
@@ -45,6 +68,7 @@ export function loadCatalog(): Catalog {
     if (item.category === 'trees') catalog.trees.push(item);
     else if (item.category === 'stones') catalog.stones.push(item);
     else if (item.category === 'bushes') catalog.bushes.push(item);
+    else if (item.category === 'fish') catalog.fish.push(item);
     else catalog.plants.push(item);
   }
   cached = catalog;

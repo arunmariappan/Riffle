@@ -19,6 +19,24 @@
     "spacing": 0.7,
     "density": 1
   },
+  "tolerance": {
+    "depth": {
+      "limits": [0.05, 1.8],
+      "ideal": [0.15, 1.2]
+    },
+    "flow": {
+      "limits": [-1, 0.6],
+      "ideal": [0, 0.35]
+    },
+    "light": {
+      "limits": [0.02, 1.01],
+      "ideal": [0.15, 0.7]
+    },
+    "temperature": {
+      "limits": [5, 34],
+      "ideal": [16, 30]
+    }
+  },
   "growth": {
     "yearsToMature": 1,
     "lifespanYears": 10,

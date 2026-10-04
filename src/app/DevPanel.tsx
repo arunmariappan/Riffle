@@ -1,15 +1,21 @@
 import { useEffect, useRef } from 'react';
 import { Pane } from 'tweakpane';
 import type { World } from '../engine/world/World';
+import { withSetting } from '../state/settings';
+import { useUi } from '../state/store';
 
 /**
- * Developer tuning panel (dev builds and `?dev`): live water, time, wind and tree controls. The real Builder panels
- * (plan 6.8) arrive in Phase 4; this stays as a debug aid.
+ * Developer tuning panel (dev builds and `?dev`): live water, time, wind and tree controls. The Builder's panels
+ * (plan 6.8) are the real controls; this stays as a debug aid and goes through the same settings, without undo.
  */
 export function DevPanel({ world }: { world: World }) {
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!host.current) return;
+    const apply = (path: string, value: unknown) =>
+      void world
+        .applySettings(withSetting(world.settings, path, value))
+        .then(() => useUi.getState().set({ settings: structuredClone(world.settings) }));
     const pane = new Pane({ container: host.current, title: 'Riffle dev', expanded: false });
     const water = {
       discharge: world.flow.discharge,
@@ -19,17 +25,15 @@ export function DevPanel({ world }: { world: World }) {
     };
     const w = pane.addFolder({ title: 'Water' });
     w.addBinding(water, 'discharge', { min: 0.5, max: 16, step: 0.1, label: 'discharge m³/s' }).on('change', (e) => {
-      if (e.last) void world.flow.setDischarge(e.value);
+      if (e.last) apply('water.discharge', e.value);
     });
     w.addBinding(water, 'speed', { min: 0.2, max: 3, step: 0.05, label: 'speed ×' }).on('change', (e) => {
-      if (e.last) void world.flow.setSpeedMultiplier(e.value);
+      if (e.last) apply('water.speed', e.value);
     });
     w.addBinding(water, 'level', { min: -0.5, max: 1, step: 0.02, label: 'level offset m' }).on('change', (e) => {
-      if (e.last) void world.flow.setLevelOffset(e.value);
+      if (e.last) apply('water.level', e.value);
     });
-    w.addBinding(water, 'clarity', { min: 0, max: 1, step: 0.01 }).on('change', (e) => {
-      world.flow.look.turbidity.value = 1 - e.value;
-    });
+    w.addBinding(water, 'clarity', { min: 0, max: 1, step: 0.01 }).on('change', (e) => apply('water.clarity', e.value));
 
     const time = {
       hour: world.clock.hour,
@@ -44,8 +48,8 @@ export function DevPanel({ world }: { world: World }) {
     );
     t.addBinding(time, 'speed', {
       options: { 'real time': 1, '1 min = 1 hour': 60, '1 min = 1 day': 1440, 'season lapse': 259200 },
-    }).on('change', (e) => (world.clock.timeScale = e.value));
-    t.addBinding(time, 'paused').on('change', (e) => (world.clock.paused = e.value));
+    }).on('change', (e) => apply('time.timeScale', e.value));
+    t.addBinding(time, 'paused').on('change', (e) => apply('time.paused', e.value));
 
     const windState = {
       speed: world.wind.speed.value,
@@ -55,17 +59,17 @@ export function DevPanel({ world }: { world: World }) {
     };
     const wi = pane.addFolder({ title: 'Wind' });
     wi.addBinding(windState, 'speed', { min: 0, max: 25, step: 0.1, label: 'speed m/s' }).on('change', (e) =>
-      world.setWind({ speed: e.value }),
+      apply('wind.speed', e.value),
     );
     wi.addBinding(windState, 'direction', { min: -180, max: 180, step: 1 }).on('change', (e) => {
       const a = (e.value * Math.PI) / 180;
-      world.setWind({ dirX: Math.cos(a), dirZ: Math.sin(a) });
+      apply('wind', { ...world.settings.wind, dirX: Math.cos(a), dirZ: Math.sin(a) });
     });
     wi.addBinding(windState, 'gustiness', { min: 0, max: 1.5, step: 0.01 }).on('change', (e) =>
-      world.setWind({ gustiness: e.value }),
+      apply('wind.gustiness', e.value),
     );
     wi.addBinding(windState, 'turbulence', { min: 0, max: 1.5, step: 0.01 }).on('change', (e) =>
-      world.setWind({ turbulence: e.value }),
+      apply('wind.turbulence', e.value),
     );
 
     const trees = {
@@ -75,21 +79,15 @@ export function DevPanel({ world }: { world: World }) {
       delay: world.wind.responseDelay.value,
     };
     const tr = pane.addFolder({ title: 'Trees', expanded: false });
-    tr.addBinding(trees, 'flexibility', { min: 0.2, max: 3, step: 0.01 }).on(
-      'change',
-      (e) => (world.wind.flexibility.value = e.value),
+    tr.addBinding(trees, 'flexibility', { min: 0.2, max: 3, step: 0.01 }).on('change', (e) =>
+      apply('trees.flexibility', e.value),
     );
-    tr.addBinding(trees, 'sway', { min: 0, max: 3, step: 0.01 }).on(
-      'change',
-      (e) => (world.wind.swayStrength.value = e.value),
+    tr.addBinding(trees, 'sway', { min: 0, max: 3, step: 0.01 }).on('change', (e) => apply('trees.sway', e.value));
+    tr.addBinding(trees, 'flutter', { min: 0, max: 3, step: 0.01 }).on('change', (e) =>
+      apply('trees.flutter', e.value),
     );
-    tr.addBinding(trees, 'flutter', { min: 0, max: 3, step: 0.01 }).on(
-      'change',
-      (e) => (world.wind.leafFlutter.value = e.value),
-    );
-    tr.addBinding(trees, 'delay', { min: 0.3, max: 3, step: 0.01, label: 'response delay' }).on(
-      'change',
-      (e) => (world.wind.responseDelay.value = e.value),
+    tr.addBinding(trees, 'delay', { min: 0.3, max: 3, step: 0.01, label: 'response delay' }).on('change', (e) =>
+      apply('trees.delay', e.value),
     );
 
     const timer = window.setInterval(() => {

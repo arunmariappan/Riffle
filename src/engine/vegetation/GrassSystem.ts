@@ -108,6 +108,16 @@ export class GrassSystem {
     this.lastRefillMs = performance.now() - t0;
   }
 
+  /** Refills the blades around the current center (after the grass brush changed the density). */
+  refresh(): void {
+    if (Number.isFinite(this.center.x)) this.refill();
+  }
+
+  /** 0..1 grass density at a point (tests pick a meadow with it). */
+  densityAt(x: number, z: number): number {
+    return this.field.densityAt(x, z);
+  }
+
   setLook(lushness: number): void {
     (this.look.dryness as any).value = 1 - lushness;
   }

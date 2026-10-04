@@ -1,0 +1,44 @@
+{
+  "id": "golden-mahseer",
+  "name": "Golden mahseer",
+  "plural": "Golden mahseer",
+  "description": "A large, deep-bodied fish with gold metallic scales and reddish fins. Patrols the deep pools, shelters behind big boulders and runs upstream to spawn when the monsoon raises the water.",
+  "category": "fish",
+  "body": { "template": "deep", "fins": "forked", "length": [0.6, 1.2], "barbels": true },
+  "pattern": {
+    "kind": "gold",
+    "back": "#4a4a26",
+    "flank": "#d9a63a",
+    "belly": "#f0dca0",
+    "accent": "#8a6420",
+    "accent2": "#c8501e",
+    "fin": "#c86a30",
+    "finTip": "#8a3018",
+    "metal": 0.8,
+    "iridescence": 0.15
+  },
+  "behavior": {
+    "cruise": 0.7,
+    "burst": 2.6,
+    "comfortCurrent": 0.35,
+    "depthPreference": 0.4,
+    "schooling": { "separation": 1.4, "alignment": 0.4, "cohesion": 0.3, "radius": 7 },
+    "shyness": 0.7,
+    "rheotaxis": 0.85,
+    "curiosity": 0.2
+  },
+  "habitat": { "depth": [0.8, 6], "flow": [0, 1.2], "temperature": [10, 28], "oxygenMin": 6 },
+  "diet": ["insects", "fish", "algae", "plants"],
+  "spawning": { "seasons": ["monsoon"], "ground": "gravel", "migrates": true },
+  "life": { "maturityYears": 4, "lifespanYears": 20, "fecundity": 30 },
+  "genes": {
+    "bodySize": { "mean": 0.45, "sd": 0.15 },
+    "swimStrength": { "mean": 0.6, "sd": 0.1 },
+    "preferredFlow": { "mean": 0.4, "sd": 0.12 },
+    "brightness": { "mean": 0.6, "sd": 0.1 },
+    "shyness": { "mean": 0.7, "sd": 0.1 },
+    "heritability": 0.4,
+    "mutation": 0.02
+  },
+  "school": { "size": 4, "max": 12 }
+}

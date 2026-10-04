@@ -41,10 +41,10 @@ are recommendations you can change here.
 ## Progress
 
 Implementation started 2026-10-04 on your PC and ran Phase 0 → Phase 3 without stopping. It stopped partway through
-Phase 3 the same day: the Phase 3 code is in, but nothing new has been seen on screen yet. The rest of Phase 3 and
-Phases 4–9 continue in a Claude cloud session (see [Handoff](#handoff-to-the-cloud-session)). Cloud machines have no
-GPU, so everything that needs WebGPU goes on the [local GPU checks](#local-gpu-checks-run-on-your-pc) list and runs
-on your PC later. This section is updated at the end of every phase; each phase in [10](#10-phases) also gets a
+Phase 3 the same day; a Claude cloud session then finished Phase 3 and wrote Phases 4–9 (see
+[Handoff](#handoff-to-the-cloud-session)). Cloud machines have no GPU, so everything from Phase 3 on is **code done**:
+type-checked, linted, unit-tested and built, but not yet seen on screen. Everything that needs WebGPU is on the
+[local GPU checks](#local-gpu-checks-run-on-your-pc) list (G1–G23) to run on your PC. This section is updated at the end of every phase; each phase in [10](#10-phases) also gets a
 **Built** note.
 
 | Phase | Milestone | Status | Short summary |
@@ -52,13 +52,13 @@ on your PC later. This section is updated at the end of every phase; each phase 
 | 0 — Groundwork and hardware check | M1 | **Done** (P1 open) | Scaffold, CI, flow solver prototype, rendering test scene, e2e in Chrome and Edge |
 | 1 — The valley | M1 | **Done** (P6–P8 open) | Generated valley with erosion, terrain LOD, sky and time of day, walking, first planting; 58 fps at 1080p High |
 | 2 — Living water | M1 | **Done** (P10–P12 open) | Flow solver in a worker, river/pond/waterfall water with flow-map ripples, refraction, foam, caustics, wading and swimming, debris, first barb school; 54.6 fps |
-| 3 — Wind and vegetation | M2 | **In progress** (code in; e2e tests and G1–G4 pending) | One wind state for every consumer, tree ferns, ferns, wildflowers and orchids, six water plants placed by depth and current, grass that bends away from you, falling petals, leaves and pollen, season looks. Not seen on screen yet |
-| 4 — Builder | M2 | Not started | |
-| 5 — Fish | M3 | Not started | |
-| 6 — Ecosystem and evolution | M3 | Not started | |
-| 7 — Spatial nature audio | M4 | Not started | |
-| 8 — Photo mode and time-lapse | M4 | Not started | |
-| 9 — Polish and hardening | M4 | Not started | |
+| 3 — Wind and vegetation | M2 | **Code done** (G1–G4 pending) | One wind state for every consumer, tree ferns, ferns, wildflowers and orchids, six water plants placed by depth and current, grass that bends away from you, falling petals, leaves and pollen, waterfall spray and mist, season looks; e2e and storm benchmark written. Not seen on screen yet |
+| 4 — Builder | M2 | **Code done** (G5–G6 pending) | UI shell and start screen (continue, open a file), builder camera, catalog with live thumbnails, drag and drop with a ghost and placement reasons, stones that fall and settle with Rapier, scatter/eraser/grass brushes, springs, gizmo and multi-select, 100-step undo/redo, Water/Wind/Trees/Time & weather panels, flow and depth/speed overlays, OPFS autosave and `.riffle` files. Not seen on screen yet |
+| 5 — Fish | M3 | **Code done** (G7–G10 pending) | All six species from content files with their own bodies, fins and patterns (stripes, pearl spots, leopard spots, koi patches, gold metallic scales, a shining lateral line), iridescence and backlit fins; genes per fish; habitat seeking, loaches clinging in the rapids, rises to insects, food, curiosity, night rest, koi gliding; the pond for koi; inspect and follow; a 500-fish benchmark. Not seen on screen yet |
+| 6 — Ecosystem and evolution | M3 | **Code done** (G11–G14 pending) | The ecology worker: the stream as 50 m stretches with their water (temperature, oxygen and its dawn low, light, insects, algae, nutrients), fish cohorts with five heritable traits (breeder's equation; predators pull color one way, mates the other; koi patterns mix), the mahseer's monsoon run, the kingfisher, weather that follows the seasons with a catchment (rain raises and clouds the stream after a delay), plants that grow, spread and die back, individual fish near the camera handed off from the cohorts, rain, rain rings, wet ground, lightning, the Ecosystem panel with graphs, saves version 2. Reproducible, balanced for 10 years, both adaptation experiments pass (unit tests). Not seen on screen yet |
+| 7 — Spatial nature audio | M4 | **Code done** (G15–G16 pending) | Every sound generated live in code (C27): the stream through 8 emitters that slide along the river with you, mixing pool gurgles, riffle babble and rapids roar from the solved flow; the waterfall; wind shaped by the visuals' gusts with leaf, pine, grass and bamboo rustle (knocks and creaks); rain on leaves, rock and water; thrushes, songbirds, cicadas and frogs by hour and season; the kingfisher; rising fish; thunder after lightning; footsteps by surface; the underwater muffle; HRTF panners; sound on/off and volume. Not heard yet |
+| 8 — Photo mode and time-lapse | M4 | **Code done** (G17–G19 pending) | Photo mode (P): a free camera with collision, a real lens (focal length, aperture, focus; click to focus), exposure, six filters, a thirds grid, hide the controls; stills accumulate 64–256 frames with sub-pixel, lens-aperture and sun-disk samples (smooth edges, true depth of field and bokeh, soft shadows) and save as PNG up to 4K; time-lapses of a day, a season or a year from a fixed camera or a 2–5 keyframe path, encoded by WebCodecs and muxed by Mediabunny into an MP4 streamed to disk. Recording doesn't change the simulation (unit-tested). Not seen on screen yet |
+| 9 — Polish and hardening | M4 | **Code done** (G20–G23 pending) | Dynamic resolution that holds the frame rate within each preset's range; Low/Medium/High/Ultra presets now also set the fish budget; a settings dialog (graphics, comfort, sound, controls guide) kept in the browser; a lost GPU device saves the valley and reloads it from the autosave (a lighter preset if it repeats); the engine loads after the start screen (586 KB first page); install as an app (manifest and icon); README and controls guide; `tools/fresh-clone.ts` (passes in the cloud); an hour-long soak test written. Not seen on screen yet |
 
 ### Open points and pending items
 
@@ -70,14 +70,27 @@ on your PC later. This section is updated at the end of every phase; each phase 
 | P4 | **KTX-Software** isn't in winget; its installer (v4.4.2) was started but the admin prompt was cancelled. Textures ship as WebP until it's installed (KTX2 compression in `pnpm assets` is skipped). | You (run the installer) | Phase 0 | Open |
 | P5 | three.js reports total GPU time only, not per pass. Pass costs are measured by switching presets (see Phase 0 Built). | — | Phase 0 | Accepted |
 | P6 | **Reference photos** of monsoon mountain streams for the golden-shot comparison. I can't download copyrighted photos into the repo; a personal folder of yours (kept out of Git) works best. Until then the shots are judged by eye. | You | Phase 1 | Open |
-| P7 | **Volumetric clouds and cloud shadows**: the sky uses three.js SkyMesh with its 2D cloud layer for now (see C7). | Me | Phase 1 | Open (Phase 6 weather or Phase 9) |
+| P7 | **Volumetric clouds and cloud shadows**: the sky uses three.js SkyMesh with its 2D cloud layer for now (see C7). Phase 6 drives its cover from the weather; raymarched clouds were not built in Phases 6–9. | Me | Phase 1 | Open (after the GPU checks) |
 | P8 | **First load compiles shaders for 20–35 s** in a fresh browser profile (Windows D3D12 shader compilation). The loading screen stays up until frames are smooth, and your own Chrome caches the shaders, so later loads are faster. | Me | Phase 1 | Mitigated |
-| P10 | **Terrain detail normal maps**: D3D12 allows 16 samplers per shader stage, so only the rock layer keeps a normal map (meadow and pebble normals were dropped). Packing layers into an array texture would restore them. | Me | Phase 2 | Open (Phase 9) |
-| P11 | **Waterfall spray and mist particles** aren't built yet; the falling sheet and the plunge foam are. | Cloud session | Phase 2 | Open (rest of Phase 3, or Phase 9) |
+| P10 | **Terrain detail normal maps**: D3D12 allows 16 samplers per shader stage, so only the rock layer keeps a normal map (meadow and pebble normals were dropped). Packing layers into an array texture would restore them. | Me | Phase 2 | Open (later: an array texture) |
+| P11 | **Waterfall spray and mist particles**: built in Phase 3 (`src/sim/particles/spray.ts`, `src/engine/water/Spray.ts`), with splashes for dropped stones. Needs a first look (G1). | — | Phase 2 | **Closed** (code; look in G1) |
 | P12 | Looking up from underwater shows the world above (refracted) but no Snell's window or total internal reflection. | Me | Phase 2 | Accepted |
-| P9 | The main bundle is 5 MB (EZ-Tree inlines its textures). Code-splitting the engine behind the start screen is planned. | Me | Phase 0 | Open (Phase 9) |
-| P13 | **The Workshop page and `pnpm bake` (D31) don't exist yet.** Nothing has needed them so far: erosion runs on the CPU (C8) and lite trees stand in for impostors (C10). The `bake` script in `package.json` points to a missing `tools/bake.ts`. Phase 4 catalog thumbnails need either the Workshop (a GPU job, run on your PC) or thumbnails rendered live in the app. | Cloud session (code), you (runs) | Phase 3 | Open (Phase 4) |
+| P9 | The main bundle was 5 MB (EZ-Tree inlines its textures). Phase 9 splits the engine behind the start screen: the first page is 586 KB, and the engine chunk (about 10 MB, 5 MB gzipped, mostly EZ-Tree textures and the Rapier WebAssembly) loads after **Enter the valley**. | — | Phase 0 | **Closed** (Phase 9) |
+| P13 | **The Workshop page and `pnpm bake` (D31)**: decided in Phase 4 that nothing needs them. Erosion runs on the CPU (C8), lite trees stand in for impostors (C10), and catalog thumbnails are rendered live in the app and cached in the browser (C19). The `bake` script was removed (C20). | — | Phase 3 | **Closed** |
 | P14 | **The Phase 3 code hasn't been seen on screen.** It was written, type-checked and unit-tested, but the visual checks were stopped. Reading the code at the handoff found one bug (the plants and air particles were never added to the scene; fixed). Expect a few more fixes after G1. | You (G1), then the cloud session | Phase 3 | Open |
+| P15 | **The builder hasn't been seen on screen** (cloud session, no GPU). Most likely to need a fix after G6: the gizmo (three's `TransformControls` on WebGPU), the thumbnail orientation and lighting (read back from a render target), the overlay drape's texture orientation, and the ghost ring height. The logic behind them (undo, placement rules, edit layer, saving, picking, brushes) is unit-tested. | You (G5, G6), then a session with the fixes | Phase 4 | Open |
+| P16 | **Fish schools can be released but not selected or moved** in the builder. Phase 5 added inspecting and following a single fish (click it in Build, E in Explore); schools stay unmovable on purpose (fish move themselves). | — | Phase 4 | **Closed** (Phase 5) |
+| P17 | **Springs (side brooks) add their water to the stream and bubble where they join**, but there is no visible brook channel running down the bank. | Me | Phase 4 | Open (later) |
+| P18 | **Weather "Follow the seasons"** gives each season its sky, haze and dawn mist; the choices in the Time & weather panel set clear, overcast, mist, rain, downpour or storm skies. Rain falling, rain rings, wet surfaces and rain raising the discharge came with Phase 6 (look in G12). | — | Phase 4 | **Closed** (Phase 6) |
+| P19 | **The fish haven't been seen on screen.** Most likely to need tuning after G9: pattern scales on each body (spot sizes, stripe widths), fin transparency and the backlight, the banked-turn roll, iridescence strength, and koi pattern variety. | You (G9), then a session with the fixes | Phase 5 | Open |
+| P20 | **GPU minnow and danio schools** (the plan's optional thousands of fish on compute shaders) are not built; all fish are CPU agents (up to 2,000 in the shared buffer). | Me | Phase 5 | Open (optional) |
+| P21 | **The Phase 6 visuals haven't been seen on screen**: rain streaks, rings on the water, wet ground and stones, the lightning flash, the kingfisher, the Ecosystem panel's graphs and the ecology overlays. Most likely to need tuning after G12–G13: rain density and brightness, the ring size, how dark wet ground gets, the flash strength, the bird's scale and colors. The simulation behind them is unit-tested. | You (G12, G13), then a session with the fixes | Phase 6 | Open |
+| P22 | **Trees and grass don't take part in the plant ecology yet**: ground plants and water plants grow, spread and die back (C25), but trees stay as placed and the grass density doesn't respond to moisture (only its look follows the season). | Me | Phase 6 | Open (later) |
+| P24 | **Nobody has listened to the sounds yet** (a cloud session can't). They are generated, not recorded (C27), so expect a tuning pass after G16: the balance between stream, wind and life, how natural the bird songs and frogs sound, rain and thunder levels. Recorded CC0 sounds can replace any of them later (`NatureAudio` plays sample buffers the same way). | You (G16), then a session with the fixes | Phase 7 | Open |
+| P25 | **Photo mode and time-lapses haven't been tried** (no GPU in the cloud session). Most likely to need a fix after G18: how the developing photo shows on screen and the PNG's orientation and colors (both read back from render targets), shadows with the jittered sun (cascaded shadow maps), memory at 4K (the whole pipeline is rebuilt at the output size), and the encoder's choices on your GPU. | You (G17, G18), then a session with the fixes | Phase 8 | Open |
+| P26 | **Long captures are long GPU loads**: 256-sample 4K stills and year-long 4K time-lapses wait for P1 (G19). The defaults stay short: 64 samples at screen size, 1080p time-lapses. | You (after P1) | Phase 8 | Open |
+| P27 | **The Phase 9 pieces haven't been seen on screen**: the settings dialog, dynamic resolution in a heavy view (does the picture stay steady?), the device-lost reload (Chrome's `chrome://gpucrash` triggers one), and installing as an app (an SVG icon and no service worker: current Chrome accepts both, an older one may not offer to install). | You (G21, G22), then a session with the fixes | Phase 9 | Open |
+| P23 | **Fish are shown individually only near the camera** (the two-level hand-off: stretches within about 80 m). Looking down from high in the builder, far stretches show no fish. `?allfish` shows every stretch at once (tests, the fish benchmark). | — | Phase 6 | Accepted |
 
 ### Changes from the plan made during implementation
 
@@ -100,6 +113,21 @@ on your PC later. This section is updated at the end of every phase; each phase 
 | C15 | — | The renderer asks the adapter for more sampled textures per shader stage (WebGPU's default is 16) | The terrain shader needs 17 with shadows and sky light |
 | C16 | GPU compute particles; a wind texture (D15) | Falling petals, leaves and pollen are 260 instanced quads moved on the CPU. The wind is a few shader uniforms plus gust fronts computed in the shader, with a CPU twin (`src/sim/wind/windField.ts`) that particles, audio and ecology read. There is no wind texture | Same reason as C14; the analytic wind needs no texture and the CPU twin keeps the gusts identical everywhere |
 | C17 | Water plants placed by the scatter rules with everything else | Water plants are placed after the first flow solve, using the solved depth and current at each spot (`src/sim/scatter/aquatic.ts`): lotus and lilies in the still pond, bed plants by their depth and flow limits, Java fern and moss on submerged stones | The scatter needs the water, which only exists after the solve |
+| C18 | GPU particles for waterfall spray and mist | Spray, mist and splashes stepped on the CPU (`SprayField`, a few hundred particles) and drawn as camera-facing quads | Same reason as C14 and C16; pure TypeScript is unit-tested in Node |
+| C19 | Catalog thumbnails rendered by the Workshop page (`pnpm bake`) | Rendered live in the app behind the loading screen from the same generators and materials (`src/engine/thumbnails.ts`), cached in localStorage by content hash | No GPU bake step on your PC; a changed JSON file re-renders its own thumbnail |
+| C20 | A Workshop page and `pnpm bake` for GPU jobs (D31) | None: terrain erosion on the CPU (C8), lite trees (C10), live thumbnails (C19); the `bake` script is gone | Nothing needs a GPU bake; fewer steps for a fresh clone |
+| C21 | Picking with three-mesh-bvh | Analytic picking: rays against the height map, the water surface, ellipsoids (stones) and cylinders (trees, plants) in pure TypeScript (`src/builder/picking.ts`) | Instanced items aren't Object3Ds; analytic shapes are simpler, fast and unit-tested |
+| C22 | Fish placement checks water temperature from the ecology grids | A water-temperature model (`src/sim/ecology/temperature.ts`): seasons, the daily swing, lag behind the air, cooler fast or shaded water, a warmer pond | The ecology grids arrive in Phase 6; the same model feeds them |
+| C23 | One instanced mesh per body template | One per species: each has its own fins (forked, flowing, rounded, suction), barbels and pattern shader | Each species' pattern compiles to its own small shader instead of one big branching one |
+| C24 | Environment grids of 4 m cells (about 250 × 250) in the ecology worker | The environment per stretch (about 50 m): water temperature, oxygen and its dawn minimum, light, insects, algae, nutrients, turbidity. Canopy shade and the overlays use a 4 m grid | The fish cohorts live per stretch (D19), so that is the scale they read; it keeps a 10-year run near 1 s and exactly reproducible |
+| C25 | Every plant takes part, and grass and plant carpets are density fields re-scattered by tile | Ground plants and water plants grow, spread (wind seeds downwind, fragments and plantlets downstream, runners) and die back as individuals, each with a growth-versus-spread gene; trees and grass stay as placed (P22) | The individual plants are where the spreading shows; tolerance curves for them are in their JSON files |
+| C27 | Sounds from freesound.org (CC0) or your recordings | Every sound is generated in code: water from bubbles (Minnaert resonances) and filtered noise, wind from noise shaped by the same gusts as the visuals, rain drop by drop, bird songs, cicadas, frogs, thunder and footsteps synthesized fresh each time (`src/audio/dsp/`) | No downloads or licenses, nothing ever loops (the plan's 10-minute test), and every sound follows the simulation's numbers directly |
+| C28 | 3D sound through three.js `AudioListener` / `PositionalAudio` | Web Audio `PannerNode`s (HRTF) placed directly, the listener set from the camera each frame (`src/audio/AudioEngine.ts`) | The emitters are AudioWorklet nodes moved every 50 ms; three's wrappers would add nothing |
+| C29 | Depth of field in photo mode's live view | The live view shows the sharp range as numbers ("sharp from 3.1 m to 7.4 m"); depth of field and bokeh appear in the photo, from real lens-aperture samples | A post-process blur would be another shader to compile and would look different from the photo |
+| C30 | Accumulation averages the rendered frames | It averages the pipeline's final, tone-mapped frames (with TRAA off, since accumulation does the anti-aliasing and moves the camera) | The pipeline stays untouched. Averaging after tone mapping makes very bright bokeh highlights a little dimmer than a linear average would |
+| C31 | A fresh clone runs `pnpm assets` → `pnpm bake` → `pnpm start` | `pnpm assets` → `pnpm start` (no bake step, C20); `tools/fresh-clone.ts` runs the clone, install, checks, tests and build in a temporary folder | Nothing needs a GPU bake; the tool makes the fresh-clone test repeatable |
+| C32 | Installing as an app | A web manifest with an SVG icon, no service worker (no offline mode) | Current Chrome and Edge install pages without one; the app needs its local server for the COOP/COEP headers anyway |
+| C26 | The discharge slider sets the stream's flow | The slider sets the usual (dry-weather) flow; the seasons and the catchment scale it (about ×0.6 before the monsoon, ×1.4 in it, more for a day or two after heavy rain). "Rain raises the stream" in the Ecosystem panel turns it off; valleys saved before Phase 6 open with it off | Rain raising the discharge after a delay (plan 6.7) needs the stream to follow the weather; old saves keep the stream they had |
 
 ### Local GPU checks (run on your PC)
 
@@ -109,25 +137,47 @@ wait for P1/P2. Commands assume `pnpm dev` is running, except the benchmark (`pn
 
 | # | Check | How | Phase | Status |
 |---|---|---|---|---|
-| G1 | **First look at the Phase 3 vegetation**: ferns, wildflowers, orchids and tree ferns on the banks; lotus and lilies on the pond; Java fern, crypts, Rotala and moss in the stream bending with the current; falling petals, leaves and pollen; grass bending away from your feet. `plants.visibleCount` above 0 at the pond. | `npx tsx tools/golden.ts test-results/p3 riffles,pond,pool,bend 10`, then `npx tsx tools/probe.ts "/?autostart&freeze&spot=pond&hour=10" "window.__riffle.world.plants.visibleCount"` | 3 | Open |
+| G1 | **First look at the Phase 3 vegetation**: ferns, wildflowers, orchids and tree ferns on the banks; lotus and lilies on the pond; Java fern, crypts, Rotala and moss in the stream bending with the current; falling petals, leaves and pollen; grass bending away from your feet; spray and mist at the foot of the waterfall (`tools/views.ts` has a waterfall view). `plants.visibleCount` above 0 at the pond. | `npx tsx tools/golden.ts test-results/p3 riffles,pond,pool,bend 10`, `npx tsx tools/views.ts test-results/p3-views`, then `npx tsx tools/probe.ts "/?autostart&freeze&spot=pond&hour=10" "window.__riffle.world.plants.visibleCount"` | 3 | Open |
 | G2 | **Spring and autumn golden shots** look right (Phase 3 done-when) | `npx tsx tools/golden.ts test-results/p3-spring riffles,pond 10 75`, and the same with `test-results/p3-autumn` and day `300` | 3 | Open |
-| G3 | **Phase 3 e2e tests**: a wind change reaches trees, bamboo, grass, water and particles within 1 s; each tree dynamics slider makes a visible difference | `pnpm test:e2e` (once the cloud session writes them) | 3 | Open (tests not written yet) |
-| G4 | **Storm-wind benchmark**, under a minute: stays within the budget at 1080p High, ≤ 1,500 draw calls | `pnpm bench` with storm wind | 3 | Open (test not written yet) |
+| G3 | **Phase 3 e2e tests** (`tests/e2e/wind.spec.ts`): a wind change reaches the shaders, water, clouds and particles within 1 s and the trees and grass visibly move more; each tree dynamics slider changes the picture of a tree in frozen storm wind. If a threshold is off, tune it from the logged numbers rather than loosening the test blindly | `pnpm test:e2e tests/e2e/wind.spec.ts` | 3 | Open (tests written) |
+| G4 | **Benchmarks**, 20 s each: the valley and the storm-wind flights stay within the budget at 1080p High, ≤ 1,500 draw calls, no more than 2 hitches in the storm | `pnpm bench` (runs both flights) | 3 | Open (test written) |
+| G5 | **Phase 4 e2e** (`tests/e2e/builder.spec.ts`): drag a boulder from the catalog into the riffles (it settles on the bed, undo and redo work); dragging lotus over fast water shows "Lotus needs still water…" and places nothing; every catalog item finds a valid spot and is placed (Java fern on a stone); the wind slider changes the world live; 100 undo and redo steps; save → close → reopen from the autosave, and save → open from a file, restore the valley exactly | `pnpm test:e2e tests/e2e/builder.spec.ts` | 4 | Open (tests written) |
+| G6 | **First look at the builder** (a few minutes by hand, `pnpm dev`): Tab into Build; catalog thumbnails are upright and lit; dragging a card shows the real item under the cursor with a green or red ring and a reason; a boulder dropped in the stream splashes, settles and a wake forms; click selects (yellow ring), the gizmo moves, turns and scales (1/2/3), Delete removes; scatter, erase and grass brushes; spring tool bubbles on a bank; flow arrows follow the stream and the depth/speed drape lines up with the water; every panel slider changes the world; Valley ▾ → Save/Open; reload offers "Continue where you left off" | Manual, `pnpm dev` | 4 | Open |
+| G7 | **Phase 5 e2e** (`tests/e2e/fish.spec.ts`): all six species are in the valley and every fish is in the water (koi in the pond); barbs and loaches face upstream in moving water; koi gather at food thrown across the pond within 25 s; mahseer keep to deep or sheltered water; a fish can be inspected and followed | `pnpm test:e2e tests/e2e/fish.spec.ts` | 5 | Open (tests written) |
+| G8 | **500 fish within the budget**: the `fish` flight tops the valley up to about 500 fish and checks fps, GPU time and draw calls | `pnpm bench` (third flight) | 5 | Open (test written) |
+| G9 | **First look at the fish**, side by side with reference photos (P6) when you have them: each species recognizable (gold mahseer with reddish fins, barb's red-over-black stripe, minnow's gold line and red fins, danio pearls and orange fins, leopard loach clinging flat to rocks, koi patches and long fins), elegant in motion (wave, banked turns, koi gliding, fins rippling), fins glowing against the sun | `npx tsx tools/views.ts test-results/p5`, then `pnpm dev`: E on a fish, Follow; F at the pond | 5 | Open |
+| G10 | **10-minute fish soak** in the browser: no fish leaves the water (the same check runs in Node in `tests/unit/fish.test.ts`) | A long GPU run: waits for P1 | 5 | Open (after P1) |
+| G11 | **Phase 6 e2e** (`tests/e2e/ecology.spec.ts`): the Ecosystem panel shows the populations and graphs; a season time-lapse moves the valley on (days pass, graph points arrive, populations change); a downpour brings rain drops, wet ground, then within 30 s a stream 30% higher and cloudier; walking down the stream, fish appear out of sight and fold back far away (no more than 2% appear within 20 m ahead or vanish within 50 m); the kingfisher comes by and leaves when switched off; the autosave keeps the ecosystem. Also re-run G7: `fish.spec.ts` now uses `?allfish` | `pnpm test:e2e tests/e2e/ecology.spec.ts`, then `pnpm test:e2e tests/e2e/fish.spec.ts` | 6 | Open (tests written) |
+| G12 | **First look at the weather** (a few minutes, `pnpm dev`): Build → Time & weather → Monsoon downpour: rain streaks tilt with the wind and dim at night, rings dot the stream and the pond, the ground and stones turn darker and glossier and dry afterwards; Storm: lightning flashes (not blinding) and strong gusts; after heavy rain the stream rises and turns cloudy | Manual, `pnpm dev` | 6 | Open |
+| G13 | **First look at the kingfisher, the Ecosystem panel and the hand-off**: the bird's blue back, orange breast and size, perching, flying low, hovering and diving with a splash; the graphs readable; the Oxygen, Light, Temperature and Fish overlays line up with the water; walking along the stream, fish never pop in or out in front of you | Manual, `pnpm dev` (Ecosystem tab; Season lapse for a minute) | 6 | Open |
+| G15 | **Phase 7 e2e** (`tests/e2e/audio.spec.ts`, measured on the mix with an analyser): a click starts the sound; the rapids are louder than the pool and walking between them never jumps; the water speed and wind sliders are audible; diving muffles (cutoff under 1 kHz, the mix much darker); the sound button mutes and is remembered | `pnpm test:e2e tests/e2e/audio.spec.ts` | 7 | Open (tests written) |
+| G16 | **Ten-minute listen** with headphones (`pnpm dev`, click once): walk from the rapids to the pool and the waterfall; dawn (thrushes, the chorus), a hot pre-monsoon afternoon (cicadas), a monsoon night (frogs, rain), a storm (thunder after the flash); dive; walk on gravel, moss, leaves and through shallow water; the kingfisher's call. Nothing should repeat noticeably or sound synthetic enough to distract; note anything to tune (P24) | Manual, `pnpm dev` (Time & weather sets the hour, day and weather) | 7 | Open |
+| G17 | **Phase 8 e2e** (`tests/e2e/photo.spec.ts`): P opens photo mode; a 64-frame 1080p still saves as a PNG and is smoother than a single frame; f/1.4 focused at 1.5 m blurs the background more than f/22; a one-day time-lapse records an MP4 (`ftyp`) and leaves the valley a day later; a recorded season gives the same ecosystem (hash) as simply running the season | `pnpm test:e2e tests/e2e/photo.spec.ts` (short GPU runs, about a minute each) | 8 | Open (tests written) |
+| G18 | **First look at photo mode** (`pnpm dev`, P): moving and looking (right-drag), click to focus, the sharp-range readout, filters and exposure, the grid, H to hide the controls; take a 64-frame photo at screen size and compare it with the live view (edges, shadows, depth of field at f/1.4); record a one-day time-lapse at 1080p and play it | Manual, `pnpm dev` | 8 | Open |
+| G19 | **The Phase 8 done-when**: a 256-frame 4K still saves correctly and looks clearly better than the live view; a one-year time-lapse (a frame a day: blossom → monsoon → autumn → snow) records to a playable MP4 | Manual, after P1 (long GPU runs) | 8 | Open (after P1) |
+| G20 | **Fresh clone on your PC**: follow the README from `git clone` (with Git LFS) to `pnpm start` in a new folder, open the app, then install it as an app from the address bar. `npx tsx tools/fresh-clone.ts --assets --keep` automates the first part | Manual + `tools/fresh-clone.ts` | 9 | Open |
+| G21 | **Every earlier phase's checks still pass** (Phase 9 done-when): the whole e2e suite in Chrome and Edge, then the benchmarks | `pnpm test:e2e` (in short batches, one spec at a time), `pnpm bench` | 9 | Open |
+| G22 | **First look at Phase 9**: ⚙ Settings (each preset changes the picture; dynamic resolution steadies a heavy view such as a storm in the bend; field of view, mouse, invert, head bob and softer lightning work and are remembered after a reload); open `chrome://gpucrash` in another tab: Riffle says the graphics device stopped and comes back from the autosave | Manual, `pnpm start` | 9 | Open |
+| G23 | **Hour-long session**: no crashes or memory growth (`tests/e2e/soak.spec.ts` tours every mode and samples memory each minute) | `SOAK_MINUTES=60 pnpm test:e2e tests/e2e/soak.spec.ts --project=chrome`: a long GPU run, after P1 | 9 | Open (after P1) |
+| G14 | **Season-lapse soak**: 10 minutes at Season lapse (about 5 simulated years): fps steady, no memory growth, the flow re-solves after rain don't hitch | A long GPU run: waits for P1 | 6 | Open (after P1) |
 
 ### Handoff to the cloud session
 
-State on 2026-10-04: Phases 0–2 are done; the Phase 3 code is committed and passes the typecheck, lint, Prettier and
-40 unit tests, but none of it has been seen on screen (P14). Working rules for any session are in `CLAUDE.md` at the
+State on 2026-10-04, end of the cloud session: Phases 0–2 are done; Phases 3–9 are **code done** and pass the
+typecheck, lint, Prettier, 155 unit tests and the build (the same set CI runs), but nothing from Phase 3 on has been
+seen on screen or heard (P14, P15, P19, P21, P24, P25, P27). Working rules for any session are in `CLAUDE.md` at the
 repo root.
 
+**Next, on your PC:** the G rows in order (G1 → G23), a few at a time, with short runs until P1 is closed. Each one
+that fails becomes a fix in a session with a GPU; the P rows say what is most likely to need one.
+
 **Next, in order:**
-1. Finish Phase 3: write the e2e tests for G3 and the storm benchmark for G4, the waterfall spray and mist (P11) if
-   it fits, `docs/phases/phase-3.md` ticked off, and a **Built** note under [Phase 3](#phase-3--wind-and-vegetation-l).
-   Leave Phase 3 as *code done, GPU checks pending* until G1–G4 pass on your PC.
-2. Phases 4–9 in order, using each phase's text and **Done when** list in [10](#10-phases). After each phase: update the
-   Progress table, add a Built note, write `docs/phases/phase-N.md`, add a G row for every check that needs a GPU, add
-   P rows for open points, then commit and push.
-3. Phase 4 needs a decision on catalog thumbnails (P13) before the catalog UI is built.
+1. ~~Finish Phase 3~~ **Done** in the cloud session: the e2e tests (G3), the storm benchmark (G4), the waterfall
+   spray and mist (P11), the checklist and the Built note. Phase 3 stays *code done, GPU checks pending* until G1–G4
+   pass on your PC.
+2. ~~Phases 4–9 in order~~ **Done** in the cloud session (code), each with its Built note, `docs/phases/phase-N.md`,
+   G rows, P rows and C rows.
+3. ~~Phase 4 needs a decision on catalog thumbnails (P13)~~ Decided: rendered live in the app (C19).
 
 **What a cloud machine can and can't do here:**
 - It can: `pnpm install`, `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm test` (Vitest, Node only) and
@@ -966,7 +1016,7 @@ the full scatter rules; and the season looks.
 within 1 s; each tree dynamics slider makes a visible difference; the full valley with storm wind stays within the
 budget (including ≤ 1,500 draw calls); spring and autumn golden shots look right.
 
-**Built so far (2026-10-04, paused here; not seen on screen yet, see P14):**
+**Built (2026-10-04; code done, not seen on screen yet, see P14 and G1–G4):**
 - **One wind state** (`World.setWind`): the Wind panel changes the CPU state and every shader uniform together:
   trees, bamboo, grass, plants, water chop (strongest on the pond) and cloud speed. A CPU twin of the shader's gust
   fronts (`src/sim/wind/windField.ts`, C16) drives the falling particles, with calm-breeze and monsoon-storm presets
@@ -988,8 +1038,18 @@ budget (including ≤ 1,500 draw calls); spring and autumn golden shots look rig
 - **Tests**: 40 unit tests, 4 of them new for the wind field (Beaufort names, storm stronger and never negative, gust
   fronts travel downwind, blows in the wind direction).
 
-**Left to do:** the e2e tests for the wind reaching every consumer and the tree sliders (G3), the storm benchmark
-(G4), the waterfall spray (P11), `docs/phases/phase-3.md` ticked off, then the local checks G1–G4.
+- **Waterfall spray and mist** (closes P11): fine spray thrown up where the sheet hits the pool and slow mist puffs
+  that drift downwind, plus splashes for things dropped in the water. The particles are stepped on the CPU in pure
+  TypeScript (`src/sim/particles/spray.ts`, C18) and drawn as soft camera-facing quads, only within 260 m of the fall.
+- **e2e tests** (`tests/e2e/wind.spec.ts`, G3): after a change to storm wind, the shader uniforms, the water chop,
+  the cloud speed and the falling particles' drift all follow within a second, and a tree and a meadow visibly move
+  more (frame-to-frame picture change). Each of the four tree dynamics sliders changes the picture of a tree in frozen
+  storm wind (`World.frozenTime` stops wind, water and shader time so only the slider differs).
+- **Storm benchmark** (G4): `?bench=storm` flies the valley in monsoon-storm wind; both flights now also check
+  ≤ 1,500 draw calls.
+- **Tests**: 45 unit tests (+5 for spray and mist).
+- **Not met yet**: the done-when checks all need a GPU (G1–G4). Tree impostors from the Workshop stay replaced by lite
+  trees (C10).
 
 ### Phase 4 — Builder (L)
 
@@ -1002,6 +1062,53 @@ overlays, and save/load (OPFS autosave + `.riffle` files).
 show a clear reason; 100 steps of undo/redo work; save → close the tab → reopen restores the valley exactly, from OPFS
 and from a file; every slider changes the world live; Playwright covers dragging a stone in and moving a slider.
 
+**Built (2026-10-04, cloud session; code done, not seen on screen yet, see P15 and G5–G6):**
+- **UI shell** (`src/app/`): a start screen with *Enter the valley*, *Continue where you left off* (latest autosave)
+  and *Open a valley file…*; a top bar with Explore / Build (Tab switches) and the Valley menu (save as, open, new
+  valley from a seed); toasts. Shared state lives in a Zustand store (`src/state/store.ts`); React only sends commands
+  to the engine. Radix UI for tabs, sliders and menus; CSS modules.
+- **Builder camera** (`src/engine/player/BuilderCamera.ts`): orbit around a ground point (right-drag turn,
+  middle-drag pan, wheel zoom, WASD pan, Q/E turn), eased and kept above the terrain. *Explore from here* drops you on
+  the ground at its focus.
+- **Catalog** (`CatalogPanel`): fish, water plants, stones, trees, bushes and ground; every item is a JSON file
+  checked with Zod (a fish schema joins the others; `content/fish/denison-barb.json` is the first species).
+  Thumbnails are rendered live from the real generators and materials and cached (C19).
+- **Drag and drop** (`src/engine/builder/Builder.ts`): a pointer-event drag session shows the real item under the
+  cursor on the terrain, the water, the bed or a stone, with a green or red ring and the reason next to the cursor
+  (`src/builder/placement.ts`, e.g. "Lotus needs still water 0.3–1.8 m deep", "Denison barbs need water under
+  26 °C (it's 29 °C here)"). The wheel turns the ghost, Shift+wheel scales it, Esc cancels. **Stones** fall as Rapier
+  convex hulls onto the ground and the stones near them, splash, settle, freeze in place, and the flow re-solves
+  around them. Fish arrive as a school (school-size slider).
+- **One item registry** (`src/engine/world/WorldItems.ts`): stones, trees, plants and schools have stable ids;
+  adding, removing and moving go through it, which keeps your **edit layer** (`src/builder/editLayer.ts`: additions,
+  removals, moves, grass painting, springs) current and re-solves the water around changed stones. Plants growing on
+  a stone move and go with it. The scene systems grow their instance buffers without new materials, so edits never
+  recompile a shader (this also fixes a recompile the Phase 3 plant system had when instances were added).
+- **Brushes and tools**: scatter (natural spacing, placement rules per dab), eraser (choose categories), grass brush
+  (Shift clears), spring tool (a side brook that adds its water downstream). Each stroke is one undo step.
+- **Selection and gizmo**: click or Shift+click; three's `TransformControls` moves across the ground, turns about
+  the vertical and scales evenly (1/2/3); items snap back onto the ground or bed; Delete removes. Picking is analytic
+  (C21).
+- **Undo/redo** (`src/builder/undo.ts`): 100 steps, async-safe (commands never overlap), slider drags merge into one
+  step, batches for brush strokes and multi-delete.
+- **Control panels** (`ControlPanel`): Water (flow, speed, level, clarity, spring tool), Wind (direction dial, speed
+  with its Beaufort name, gustiness, turbulence, calm and storm presets), Trees (flexibility, sway, leaf flutter,
+  response delay, per-species flexibility), Time & weather (time of day, day of year, speed, pause, season lock, and
+  the weather: follow the seasons or pick one, P18). All settings are one object (`src/state/settings.ts`) applied by
+  `World.applySettings`.
+- **Overlays** (`src/engine/overlays/Overlays.ts`): flow arrows colored by speed, and a heat-map drape for water
+  depth and current speed with a legend; Phase 6 adds its grids to the same drape.
+- **Saving** (`src/save/`): the `.riffle` format (magic, gzip via `CompressionStream`, versioned header, JSON,
+  binary sections, migrations), the save document (seed, clock, settings, edit layer, where you stood), autosave to
+  OPFS every 5 minutes and when the tab is hidden (newest 3 kept, `navigator.storage.persist()`), and *Save valley
+  as…* / *Open valley…* through the File System Access API with download and file-input fallbacks. Opening a valley
+  rebuilds it from its seed and applies your edits.
+- **Water temperature** (`src/sim/ecology/temperature.ts`, C22) for the fish placement rules.
+- **Tests**: 77 unit tests (+32: undo/redo incl. 100 steps and async ordering, placement rules and their reasons, the
+  edit layer, picking, brushes, temperature, the `.riffle` round trip and damage handling, autosave rotation,
+  settings normalization) and `tests/e2e/builder.spec.ts` (G5).
+- **Not met yet**: everything on screen is unverified (P15). Fish selection waits for Phase 5 (P16).
+
 ### Phase 5 — Fish (L)
 
 Building on the Phase 2 barb school: the full fish generator (all body templates, fins, pattern shader with metallic
@@ -1012,6 +1119,40 @@ dropping a school into the water, inspect/follow, and optionally GPU minnow and 
 **Done when:** each species is recognizable in a side-by-side check against reference photos and looks elegant in
 motion; 500 fish stay within the budget; no fish leaves the water in a 10-minute soak test; barbs and loaches visibly
 hold in currents, mahseer gather behind boulders and koi come to thrown food.
+
+**Built (2026-10-04, cloud session; code done, not seen on screen yet, see P19 and G7–G10):**
+- **Six species as content** (`content/fish/`): golden mahseer, Denison barb, white cloud minnow, celestial pearl
+  danio, hillstream loach and koi, each with body template, fin shape, barbels, size range, palette and pattern kind,
+  behavior, habitat (depth, current, temperature, oxygen), diet, spawning, life history and starting genes. Adding a
+  species is a JSON file (`src/sim/boids/species.ts` turns it into school behavior).
+- **Fish generator** (`src/procgen/fish.ts`): torpedo, deep, long and flat bodies; fins built as membranes between a
+  base on the body and an edge, in rows so long fins bend smoothly: forked tails, long flowing koi fins, rounded
+  danio fins, and the loach's flat suction fins spread to the sides; barbels on koi and mahseer. A fin coordinate
+  (`aFin`) drives flutter, ripples, bars and see-through edges.
+- **Pattern and swim shader** (`src/engine/fauna/fishMaterial.ts`, one per species, C23): the barb's red line over a
+  black stripe and yellow-and-black tail, the danio's pearl spots, orange belly and barred fins, the loach's leopard
+  blotches and saddle bands, koi patches seeded per fish (Kohaku, Sanke with sumi, Showa, metallic gold Ogon), the
+  mahseer's big metallic scales with dark edges, the minnow's shining gold line. A brightness gene makes each fish
+  more vivid or more muted. Thin-film iridescence on the flanks (physical material), metallic scales, and fins that
+  glow when the sun shines through them. Motion: a travelling wave scaled by the tail beat (koi glide between
+  strokes), turns that bend and bank the body, fluttering paired fins and median fins rippling and trailing.
+- **School behavior** (`src/sim/boids/school.ts`): genes per fish (body size, swim strength, preferred flow,
+  brightness, shyness) shape its size, strength, the current it likes and how shy it is; every species seeks water of
+  its depth, current and temperature (using the temperature model); loaches cling to the bed in fast water (the current
+  can't move them), face straight into it and dart between rocks; fish rise to drifting insects at dawn and dusk (a
+  small splash), gather at thrown food (koi from across the pond, rising to the surface), come closer when you stand
+  still, flee sudden movement, and rest near the bottom at night; koi glide between strokes.
+- **Pond water for fish**: the shared flow sampler now covers the still pond (a small grid of its bed heights), so koi
+  live there and never leave it.
+- **In the world**: every species starts in its own water (barbs in the riffles, loaches in the rapids, mahseer in the
+  pool, minnows and danios along the bend, koi in the pond); the builder releases schools by the placement rules;
+  **F** throws food onto the water ahead of you; **E** (Explore) or a click (Build) opens the **fish card** (species,
+  size, age, the five traits) with **Follow**, a camera that trails the fish.
+- **Tests**: 86 unit tests (+9: every species stays in the water for 10 simulated minutes, loaches cling and hold,
+  mahseer find calm water behind a boulder, koi come to food, curious koi approach, night rest, habitat seeking, the
+  swim-strength gene) and e2e `tests/e2e/fish.spec.ts` (G7); a 500-fish benchmark flight (G8).
+- **Not met yet**: the side-by-side look against reference photos (G9, P6) and the 10-minute soak in the browser (G10,
+  after P1). GPU schools are not built (P20).
 
 ### Phase 6 — Ecosystem and evolution (XL)
 
@@ -1027,6 +1168,69 @@ rises over 20 generations (and in a slow valley it doesn't), and with low predat
 brightness rises over 20 generations; individual fish hand off to cohorts and back without visible
 popping.
 
+**Built (2026-10-04, cloud session; code done, not seen on screen yet, see P21 and G11–G14):**
+- **Stretches** (`src/sim/ecology/stretches.ts`): the solved stream is cut into stretches of about 50 m (never across
+  the waterfall, which fish can't climb), plus the pond. Each summarizes its water from the flow cells: wetted area,
+  depth, current and the share of fast and slow water, turbulence, shelter, canopy shade (`canopy.ts`, from the
+  trees), clean gravel and plant margins for spawning, and how well it suits each species.
+- **Environment** (`environment.ts`, daily per stretch, C24): water temperature (the Phase 4 model), dissolved oxygen
+  at the valley's altitude with re-aeration in riffles, photosynthesis by day and a pre-dawn low, light from day
+  length, cloud, canopy and murky water, drifting insects by season, riffles, plants and overhanging trees, algae
+  that grow with light and nutrients and are grazed and scoured by floods, and nutrients from leaf litter and fish
+  waste. The pond warms, grows algae and loses oxygen at dawn when crowded.
+- **Weather and the catchment** (`src/sim/weather/weatherSystem.ts`): weather states follow each other with each
+  season's odds (dry clear winters, pre-monsoon storms, monsoon downpours) and their own durations; rain fills a
+  linear-reservoir catchment that drains into the stream over about a day and a half on top of a seasonal base flow,
+  and washes silt in. The Water panel's flow is the dry-weather level, scaled by the catchment (C26).
+- **Fish cohorts** (`cohorts.ts`): per stretch and species, fry, juveniles and adults with the mean and variance of
+  each trait. Daily: growth through the stages, deaths from age, starvation, low dawn oxygen, heat and cold, crowding
+  and predators, spawning in each species' seasons on its ground (gravel, plants, the pond). Recruitment is
+  Beverton–Holt, calibrated per species from its life history so populations settle at their stretches' carrying
+  capacity (area × suitability × food × temperature). Fish spread to better neighboring water; the mahseer run
+  upstream to the gravel in the monsoon floods and drop back to the pools in autumn, their young drifting down.
+- **Food chain and predators**: insects and algae feed the small fish; small fish feed the mahseer; the optional
+  kingfisher hunts the shallows. Brighter fish are easier to catch.
+- **Genetics** (`genetics.ts`): five traits (body size, swim strength, preferred flow, color brightness, shyness)
+  respond by the breeder's equation (Lande's Δmean = h² · variance · β) to selection from the stretch: fast water
+  favors strong swimmers, predators favor dull, shy, bigger fish, scarce food favors small bold ones, and mate choice
+  favors brightness. Mutation keeps the variance alive; koi pattern seeds mix between parents.
+- **Reproducible** (`ecology.ts`): fixed hourly and daily steps from a seed; the whole state hashes and saves
+  exactly. A safety net (on by default) brings a few fish back to a species that nearly vanishes.
+- **Plants** (`plants.ts`, C25): ground plants and water plants have tolerance curves (now in their JSON files) for
+  light, moisture, temperature, depth and current; fit plants grow and spread (wind seeds downwind, fragments and
+  plantlets downstream, runners nearby) by the placement rules, unfit ones shrink and die. A growth-versus-spread
+  gene passes to the offspring.
+- **The two-level hand-off** (`view.ts`, `src/engine/ecology/EcologySystem.ts`): stretches within 80 m of the camera
+  show schools drawn from their cohorts (genes, ages, koi patterns; juveniles smaller); beyond 110 m they fold back.
+  Shown counts follow the populations within a budget, and new fish only appear out of sight (far, or behind you).
+  The fish the valley started with in Phase 5 now come from the ecology; fish you release join their stretch's
+  cohort.
+- **The ecology worker** (`src/workers/ecology.worker.ts`): catches the ecosystem up to the clock (up to 120 days a
+  call; a jump back or of years just moves the date) and reports the populations, the weather, the stream and every
+  stretch's water.
+- **Weather you can see**: rain streaks around the camera computed in the vertex shader (`src/engine/weather/Rain.ts`),
+  raindrop rings on the stream and the pond, ground and stones that darken and shine when wet and dry over a few
+  hours, storm gusts on top of the Wind panel's wind, lightning flashes (a hook for Phase 7's thunder), and a cloudier
+  stream after heavy rain.
+- **The kingfisher** (`src/sim/fauna/kingfisher.ts`, `src/engine/fauna/Kingfisher.ts`): a small generated bird that
+  arrives near you in the daytime, perches on stones and banks, flies low along the stream, hovers and dives with a
+  splash; switched off with its predation.
+- **Ecosystem panel** (`src/app/panels/EcosystemPanel.tsx`): time speed and the season lock, "Rain raises the
+  stream", the weather, flow, temperature and oxygen now, each species' numbers with its average brightness and swim
+  strength, the plants' growth-versus-spread gene, uPlot graphs (populations, biodiversity, water quality, color
+  brightness over the years), evolution on/off, mutation rate, predator pressure, population caps, the kingfisher, the
+  seed-stock floor, and the overlays (flow, oxygen, light, temperature, fish).
+- **Saves, version 2**: the ecosystem's state rides in the `ecology` and `plants` sections; a migration opens
+  version 1 valleys (tested with a version 1 fixture) with their stream as saved (C26).
+- **Tests**: 123 unit tests (+37). The plan's done-when checks run in Node: the same seed and inputs give the same
+  valley and different ones don't; the synthetic valley and the **real generated valley** (terrain and solved stream)
+  stay balanced for 10 years with no extinctions or runaways; over 20 generations swim strength rises by more than 0.1
+  in a fast valley and not in a slow one; brightness rises with low predator pressure and falls with high; the mahseer
+  move upstream in the monsoon; saves restore exactly. Plus the hand-off planner, plants, canopy, weather and
+  catchment, genetics, the kingfisher and the save migration. e2e `tests/e2e/ecology.spec.ts` (G11).
+- **Not met yet**: "individual fish hand off to cohorts and back without visible popping" is built and unit-tested but
+  needs the browser check (G11, G13).
+
 ### Phase 7 — Spatial nature audio (M)
 
 The audio graph and start-screen unlock, the sliding river emitters driven by the flow, the waterfall, the generated
@@ -1036,6 +1240,44 @@ monsoon downpour, the underwater filter, and footsteps.
 **Done when:** walking from the rapids to the pool changes the sound smoothly; the water speed and wind sliders are
 audible; diving muffles the world; no sound repeats noticeably in a 10-minute listen.
 
+**Built (2026-10-04, cloud session; code done, not heard yet, see P24 and G15–G16):**
+- **Generated sound** (`src/audio/dsp/`, C27): every sound is synthesized in TypeScript, live or fresh for each
+  call, so nothing loops. Shared building blocks (`core.ts`): seeded noise, pink and brown noise, biquad and
+  one-pole filters, eased parameters, wandering levels, a bank of ringing bubbles (Minnaert resonances whose pitch
+  rises as they surface) and a soft limiter.
+- **The stream** (`water.ts`, `scene.ts`): pools gurgle with a few big, low bubbles over a soft hush; riffles
+  babble with many small bubbles and a mid-range wash; rapids roar with dense tiny bubbles over broadband noise; the
+  waterfall adds a deep rumble. Eight emitters slide along the river to the cross-sections nearest you (continuously,
+  so nothing jumps), each mixing the three characters from its section's solved current, foam and depth; loudness
+  follows the water speed and discharge. The waterfall has its own emitter at its foot.
+- **Wind** (`wind.ts`): stereo noise whose body, hiss and high whistle follow the wind speed and the same gust signal
+  as the visuals (`windStrengthAt` at your position), plus rustle by the plants within 25 m: broad leaves flutter,
+  pines whoosh, grass hisses, bamboo hisses while its culms knock and creak.
+- **Rain** (`rain.ts`): drop by drop, by what they land on around you (canopy, water nearby, rock and open ground):
+  leaf patter rings small resonances, rock ticks, water drops splash and some plink as bubbles; a downpour roars.
+  Built to handle thousands of drops a second cheaply.
+- **Life** (`calls.ts`): whistling thrush songs (glided, human-like whistles), songbird trills, warbles and two-note
+  calls, the kingfisher's sharp "chee", cicada buzzes on hot afternoons, frog croaks on monsoon nights, splashes from
+  rising fish and the diving kingfisher, bubbles underwater. Who sings when comes from the hour, season, air
+  temperature, rain, wind and how close the water is (`ambienceLevels`), and a Poisson scheduler places each call in
+  the trees, on the stream's rocks or at the pond's edge.
+- **Thunder** after each lightning flash, delayed by its distance (343 m/s), a crack up close and a low rolling rumble
+  from afar. **Footsteps** by surface: gravel by the stream, moss, mud after rain, leaf litter under trees, grass,
+  rock and shallow water, from the terrain at your feet.
+- **Underwater**: a low-pass filter that closes the deeper you are, a quieter mix and rising bubbles.
+- **The audio graph** (`src/audio/AudioEngine.ts`, C28): one AudioContext unlocked by your first click or key, three
+  AudioWorklet processors (`src/audio/worklets/`), HRTF panners, a limiter and the volume. `NatureAudio` drives it
+  from the world every 50 ms (the listener every frame).
+- **Controls**: a sound on/off button in the top bar and a volume slider in Time & weather, kept in this browser.
+- **Cost**: about 20% of one core on the audio thread for all of it (measured in Node); the main thread only sets
+  parameters.
+- **Tests**: 138 unit tests (+15): the rapids roar louder than riffles and riffles are brighter than pools; the
+  generated water never repeats (no correlation a second or more apart, or between seeds); the emitters slide with
+  you; the wind gets louder with speed and is truly stereo; bamboo knocks stand out; rain follows its rate; no call is
+  ever the same twice; thunder cracks close and rumbles far; footsteps differ by surface; the underwater filter; who
+  sings when (the dawn chorus, cicadas on hot afternoons, frogs on monsoon nights); the call scheduler's rates. e2e
+  `tests/e2e/audio.spec.ts` (G15).
+
 ### Phase 8 — Photo mode and time-lapse (M)
 
 The photo camera and its settings, frame accumulation, 4K capture, and the time-lapse recorder (fixed camera and
@@ -1044,6 +1286,33 @@ keyframe path, WebCodecs + Mediabunny streaming to disk).
 **Done when:** a 256-sample 4K still saves correctly and looks clearly better than the live view; a one-year
 time-lapse (blossom → monsoon → autumn → snow) records to a playable MP4; recording doesn't change the simulation (it
 stays reproducible).
+
+**Built (2026-10-04, cloud session; code done, not seen on screen yet, see P25, P26 and G17–G19):**
+- **Photo mode** (`src/engine/photo/PhotoMode.ts`, P or the Photo button): a free camera (WASD, Q/E, Shift; right-drag
+  to look, the wheel zooms) that stays above the ground and out of the stones and can go underwater; a lens on a
+  full-frame sensor (14–200 mm, f/1.4–f/22, focus 0.3–500 m; click the view to focus there) with the sharp range shown
+  (C29); exposure compensation (±3 EV); six filters that stay natural (natural, warm light, cool morning, vivid, soft
+  film, black and white; `src/photo/filters.ts`); a rule-of-thirds grid; H hides the controls; the valley pauses
+  (wind, water, particles and fish held still) or keeps running.
+- **Stills by accumulation** (`src/photo/lens.ts`, `src/engine/photo/Accumulator.ts`): taking a photo stops the frame
+  loop, rebuilds the pipeline at the output size without TRAA (C30) and renders 64, 128 or 256 frames. Each one shifts
+  the view by a fraction of a pixel (Halton jitter), moves the eye to a point on the lens aperture while shifting the
+  image so the focus plane stays put (thin-lens depth of field and bokeh), and moves the sun to a point on its disk
+  (soft shadows). The frames are averaged in half-float targets, shown developing on screen, read back and saved as a
+  PNG (screen size, 1080p, 1440p or 4K) through the save dialog.
+- **Time-lapse** (`src/photo/timelapse.ts`, `src/engine/photo/TimeLapse.ts`): a day (a frame every 1, 2 or 5
+  minutes), a season (every hour, 3 hours or day) or a year (every 12 hours, day or 2 days; whole days keep the hour,
+  so a year shows the seasons without day and night flicker). The camera is the current view or a smooth path through
+  2–5 keyframes. Each frame sets the clock to its exact moment, lets the ecosystem catch up in its own fixed steps,
+  updates the world (season looks and weather follow at once), lightly accumulates (1, 4 or 8 samples), and goes to
+  WebCodecs (H.264 first, else HEVC, VP9 or AV1) and Mediabunny, which streams the MP4 straight into the file. The
+  valley is left at the end of the span.
+- **Recording doesn't change the simulation**: the ecosystem advances in fixed hourly and daily steps whatever the
+  frame steps are; a unit test checks that a season recorded frame by frame hashes the same as one long run.
+- **Tests**: 147 unit tests (+9): focal length and field of view, depth of field, the lens shift keeping the focus
+  plane fixed while blurring near and far points, even sample patterns, the sun disk, time-lapse plans and camera
+  paths (smooth, the short way round), filters, and the recording-reproducibility check. e2e
+  `tests/e2e/photo.spec.ts` (G17).
 
 ### Phase 9 — Polish and hardening (M)
 
@@ -1055,6 +1324,31 @@ window and desktop shortcut), a README and controls guide, and a fresh-clone tes
 **Done when:** an hour-long session runs without crashes or memory growth (once the hardware check has passed); every
 earlier phase's checks still pass; the README is enough to set up the project from a fresh clone (clone, which pulls
 `assets-src/` through LFS → `pnpm install` → `pnpm assets` → `pnpm bake` → `pnpm start`).
+
+**Built (2026-10-04, cloud session; code done, not seen on screen yet, see P27 and G20–G23):**
+- **Dynamic resolution** (`src/perf/resolution.ts`): watches GPU time (or frame time when timestamps aren't
+  available), drops the render scale a step when frames run over budget for over half a second (bigger steps when
+  far over), and raises it after four seconds with room, within each preset's range; a single slow frame (a shader
+  compiling) is ignored. TRAA upscales to the screen. Off in benchmarks and during captures.
+- **Presets** (`src/state/quality.ts`): Low, Medium, High and Ultra set the post-processing chain (as before), the
+  render scale and its dynamic range, the grass density and now the fish budget near you.
+- **Settings** (`src/app/shell/SettingsDialog.tsx`, ⚙ in the top bar): quality preset, dynamic resolution, a 30 or 60
+  fps cap; comfort: field of view, mouse sensitivity, invert Y, head bob, softer lightning (no bright flashes or
+  flicker); volume; and the controls guide. All kept in this browser (`src/state/preferences.ts`).
+- **A lost GPU device** (`src/app/recovery.ts`): Riffle shows that the graphics device stopped, saves the valley (its
+  state lives on the CPU and in the workers), and reloads from the autosave; a second loss within five minutes
+  reloads one preset lighter.
+- **Code-splitting** (`src/app/boot.ts`, closes P9): the start screen is 586 KB; the engine loads after Enter.
+- **`pnpm start`** builds once and serves the optimized app; **install as an app** from Chrome or Edge with the web
+  manifest and icon (C32).
+- **README** rewritten for a fresh clone (requirements, steps, controls, saving, photos, troubleshooting, commands);
+  **`tools/fresh-clone.ts`** clones into a temporary folder and runs install, typecheck, lint, format check, unit tests
+  and the build: it passes in the cloud session (C31).
+- **Hour-long soak test** (`tests/e2e/soak.spec.ts`, `SOAK_MINUTES`): tours exploring, building, a season lapse,
+  every weather, photo mode and overlays, sampling the JavaScript heap and GPU geometries and textures once a minute.
+- **Tests**: 155 unit tests (+8): dynamic resolution (drops until frames fit, climbs back without hunting, ignores a
+  single slow frame), the device-lost plan, preferences, presets and the overlay color scale.
+- **Not met yet**: the hour-long run waits for P1 (G23); "every earlier phase's checks still pass" is G21.
 
 ---
 

@@ -13,6 +13,15 @@ export interface FlowLayoutInfo {
   dn: number;
 }
 
+/** Bed heights over the pond (a small square grid), so threads without the height map can sample pond water. */
+export interface PondBed {
+  originX: number;
+  originZ: number;
+  cell: number;
+  size: number;
+  heights: Float32Array;
+}
+
 export interface SharedFlowConfig {
   flow: DoubleBufferHandle;
   levels: DoubleBufferHandle;
@@ -20,6 +29,7 @@ export interface SharedFlowConfig {
   controls: Vec2[];
   bounds: { minX: number; minZ: number; maxX: number; maxZ: number };
   pond: { x: number; z: number; radius: number; section: number };
+  pondBed?: PondBed;
 }
 
 export interface SharedFlowSample {
@@ -30,6 +40,8 @@ export interface SharedFlowSample {
   foam: number;
   shelter: number;
   bed: number;
+  /** True in the still backwater pond (not the stream). */
+  pond?: boolean;
 }
 
 export class SharedFlowSampler {
@@ -42,6 +54,7 @@ export class SharedFlowSampler {
   private readonly levelBuffer: DoubleBuffer;
   private seen = -1;
   private readonly pond: SharedFlowConfig['pond'];
+  private readonly pondBed: PondBed | null;
 
   constructor(config: SharedFlowConfig) {
     this.layout = config.layout;
@@ -52,6 +65,7 @@ export class SharedFlowSampler {
     this.cells = new Float32Array(this.flow.length);
     this.levels = new Float32Array(this.levelBuffer.length);
     this.pond = config.pond;
+    this.pondBed = config.pondBed ?? null;
     this.refresh();
   }
 
@@ -105,11 +119,38 @@ export class SharedFlowSampler {
         }
       }
     }
-    return null;
+    return this.samplePond(x, z);
+  }
+
+  /** Still pond water at a point, or null (outside the pond or on its dry rim). */
+  private samplePond(x: number, z: number): SharedFlowSample | null {
+    const b = this.pondBed;
+    if (!b) return null;
+    const p = this.pond;
+    if ((x - p.x) ** 2 + (z - p.z) ** 2 > (p.radius + 6) ** 2) return null;
+    const fx = (x - b.originX) / b.cell;
+    const fz = (z - b.originZ) / b.cell;
+    if (fx < 0 || fz < 0 || fx > b.size - 1.001 || fz > b.size - 1.001) return null;
+    const ix = Math.floor(fx);
+    const iz = Math.floor(fz);
+    const tx = fx - ix;
+    const tz = fz - iz;
+    const h = b.heights;
+    const i = iz * b.size + ix;
+    const bed =
+      ((h[i] as number) * (1 - tx) + (h[i + 1] as number) * tx) * (1 - tz) +
+      ((h[i + b.size] as number) * (1 - tx) + (h[i + b.size + 1] as number) * tx) * tz;
+    const level = this.pondLevel();
+    const depth = level - bed;
+    if (depth <= 0.005) return null;
+    return { velocityX: 0, velocityZ: 0, foam: 0, depth, shelter: 0, bed, surface: level, pond: true };
   }
 
   /** Direction back toward the middle of the stream (for fish near the edge), or null away from the stream. */
   towardChannel(x: number, z: number): [number, number] | null {
+    const p = this.pond;
+    const pd = Math.hypot(x - p.x, z - p.z);
+    if (this.pondBed && pd < p.radius + 8 && pd > 0.01) return [(p.x - x) / pd, (p.z - z) / pd];
     const sc = worldToStream(this.path, this.lookup, x, z);
     if (!sc) return null;
     const i = Math.round(sc.section);

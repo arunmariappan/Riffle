@@ -25,9 +25,9 @@ import { traa } from 'three/addons/tsl/display/TRAANode.js';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
 
-export type QualityPreset = 'low' | 'medium' | 'high' | 'ultra';
+import type { QualityPreset } from '../../state/quality';
 
-export const QUALITY_PRESETS: readonly QualityPreset[] = ['low', 'medium', 'high', 'ultra'];
+export { QUALITY_PRESETS, type QualityPreset } from '../../state/quality';
 
 /** Shared grading / underwater controls that survive pipeline rebuilds. */
 export interface PostControls {
@@ -72,6 +72,7 @@ export function createPipeline(
   camera: THREE.Camera,
   quality: QualityPreset,
   controls: PostControls,
+  options: { temporal?: boolean } = {},
 ): PipelineHandle {
   const pipeline = new THREE.RenderPipeline(renderer);
   const scenePass: any = pass(scene, camera);
@@ -117,7 +118,8 @@ export function createPipeline(
       const occlusion = giPass.getAONode().r;
       color = vec4(sceneColor.rgb.mul(occlusion).add(sceneDiffuse.rgb.mul(gi)), sceneColor.a);
     }
-    color = traa(color, depth, vel, camera);
+    // Photo accumulation does its own anti-aliasing (and moves the camera between frames), so it skips TRAA.
+    if (options.temporal !== false) color = traa(color, depth, vel, camera);
   }
 
   // Bloom on bright highlights only (sun glints, foam in sunlight).
