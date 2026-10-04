@@ -55,3 +55,6 @@ CI (`.github/workflows/ci.yml`) runs install, typecheck, lint, format check, uni
 - Workers talk through Comlink. Flow results reach the main thread and the fish worker through a double-buffered
   SharedArrayBuffer (`src/sim/shared/doubleBuffer.ts`).
 - `src/sim/` is pure TypeScript with no three.js or DOM, so it runs in workers and in Vitest.
+- The app is also published on GitHub Pages under `/Riffle/` (`.github/workflows/pages.yml`, plan C33). Build runtime
+  URLs from `import.meta.env.BASE_URL`, never a leading `/`. Pages can't send COOP/COEP, so `coi-sw.js` (from
+  `src/workers/isolation.sw.ts`) adds them; keep every resource same-origin.

@@ -1,0 +1,55 @@
+name: Pages
+
+# Builds Riffle and publishes it to GitHub Pages (Settings → Pages → Build and deployment → Source: GitHub Actions).
+# Pages can't send the COOP/COEP headers SharedArrayBuffer needs; the build's coi-sw.js service worker adds them.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      # The CC0 source textures are in Git LFS. Cache them so a deploy doesn't use LFS bandwidth every time.
+      - name: List the LFS objects
+        run: git lfs ls-files --long | cut -d ' ' -f1 | sort > .lfs-ids
+      - uses: actions/cache@v6
+        with:
+          path: .git/lfs
+          key: lfs-${{ hashFiles('.lfs-ids') }}
+      - run: git lfs pull
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Process the textures into public/assets/
+        run: pnpm assets
+      - name: Build for https://<owner>.github.io/<repo>/
+        run: pnpm exec vite build --base "/${{ github.event.repository.name }}/"
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

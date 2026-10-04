@@ -44,7 +44,7 @@ Implementation started 2026-10-04 on your PC and ran Phase 0 → Phase 3 without
 Phase 3 the same day; a Claude cloud session then finished Phase 3 and wrote Phases 4–9 (see
 [Handoff](#handoff-to-the-cloud-session)). Cloud machines have no GPU, so everything from Phase 3 on is **code done**:
 type-checked, linted, unit-tested and built, but not yet seen on screen. Everything that needs WebGPU is on the
-[local GPU checks](#local-gpu-checks-run-on-your-pc) list (G1–G23) to run on your PC. This section is updated at the end of every phase; each phase in [10](#10-phases) also gets a
+[local GPU checks](#local-gpu-checks-run-on-your-pc) list (G1–G24) to run on your PC. This section is updated at the end of every phase; each phase in [10](#10-phases) also gets a
 **Built** note.
 
 | Phase | Milestone | Status | Short summary |
@@ -126,8 +126,9 @@ type-checked, linted, unit-tested and built, but not yet seen on screen. Everyth
 | C29 | Depth of field in photo mode's live view | The live view shows the sharp range as numbers ("sharp from 3.1 m to 7.4 m"); depth of field and bokeh appear in the photo, from real lens-aperture samples | A post-process blur would be another shader to compile and would look different from the photo |
 | C30 | Accumulation averages the rendered frames | It averages the pipeline's final, tone-mapped frames (with TRAA off, since accumulation does the anti-aliasing and moves the camera) | The pipeline stays untouched. Averaging after tone mapping makes very bright bokeh highlights a little dimmer than a linear average would |
 | C31 | A fresh clone runs `pnpm assets` → `pnpm bake` → `pnpm start` | `pnpm assets` → `pnpm start` (no bake step, C20); `tools/fresh-clone.ts` runs the clone, install, checks, tests and build in a temporary folder | Nothing needs a GPU bake; the tool makes the fresh-clone test repeatable |
-| C32 | Installing as an app | A web manifest with an SVG icon, no service worker (no offline mode) | Current Chrome and Edge install pages without one; the app needs its local server for the COOP/COEP headers anyway |
+| C32 | Installing as an app | A web manifest with an SVG icon and no offline mode (the only service worker is C33's, for cross-origin isolation on GitHub Pages) | Current Chrome and Edge install pages without one; the app needs its local server for the COOP/COEP headers anyway |
 | C26 | The discharge slider sets the stream's flow | The slider sets the usual (dry-weather) flow; the seasons and the catchment scale it (about ×0.6 before the monsoon, ×1.4 in it, more for a day or two after heavy rain). "Rain raises the stream" in the Ecosystem panel turns it off; valleys saved before Phase 6 open with it off | Rain raising the discharge after a delay (plan 6.7) needs the stream to follow the weather; old saves keep the stream they had |
+| C33 | Hosting: local only, this PC only (D5) | Also published at https://arunmariappan.github.io/Riffle/ by `.github/workflows/pages.yml` (Pages source: GitHub Actions). The workflow builds the textures from the LFS sources and builds the app with base `/Riffle/`; runtime URLs go through `import.meta.env.BASE_URL`. Pages can't send the COOP/COEP headers, so the build ships a small service worker (`coi-sw.js`, from `src/workers/isolation.sw.ts`) that adds them; the first visit reloads once. Local `pnpm dev` and `pnpm start` are unchanged | You published the app on GitHub Pages after Phase 9; a static host needs a build step, the base path and the isolation worker |
 
 ### Local GPU checks (run on your PC)
 
@@ -160,6 +161,7 @@ wait for P1/P2. Commands assume `pnpm dev` is running, except the benchmark (`pn
 | G22 | **First look at Phase 9**: ⚙ Settings (each preset changes the picture; dynamic resolution steadies a heavy view such as a storm in the bend; field of view, mouse, invert, head bob and softer lightning work and are remembered after a reload); open `chrome://gpucrash` in another tab: Riffle says the graphics device stopped and comes back from the autosave | Manual, `pnpm start` | 9 | Open |
 | G23 | **Hour-long session**: no crashes or memory growth (`tests/e2e/soak.spec.ts` tours every mode and samples memory each minute) | `SOAK_MINUTES=60 pnpm test:e2e tests/e2e/soak.spec.ts --project=chrome`: a long GPU run, after P1 | 9 | Open (after P1) |
 | G14 | **Season-lapse soak**: 10 minutes at Season lapse (about 5 simulated years): fps steady, no memory growth, the flow re-solves after rain don't hitch | A long GPU run: waits for P1 | 6 | Open (after P1) |
+| G24 | **The GitHub Pages site** (C33): open https://arunmariappan.github.io/Riffle/ in Chrome or Edge. It reloads once and shows the start screen; **Enter the valley** loads the valley with textures, water, fish and sound; it can be installed as an app from there. A Pages-like local server (static files under `/Riffle/`, no COOP/COEP) already passed up to the start screen: isolated, SharedArrayBuffer, textures, a worker | Manual, on the live site after the Pages workflow deploys | 9 | Open |
 
 ### Handoff to the cloud session
 

@@ -14,6 +14,9 @@ a few CC0 ground textures. The terrain, trees, plants, rocks, fish and sounds ar
 
 *A riffle is the shallow, fast stretch of a stream where the water carries the most oxygen and fish gather to feed.*
 
+**Try it:** https://arunmariappan.github.io/Riffle/ needs desktop Chrome or Edge with WebGPU. The first visit reloads
+once (see [Deploying](#deploying-to-github-pages)), and the first load compiles shaders for a minute or more.
+
 ![The pond in spring: lily pads, the forest and the ridges](docs/screenshots/readme-pond.jpg)
 
 | The riffles | The builder |
@@ -26,7 +29,7 @@ a few CC0 ground textures. The terrain, trees, plants, rocks, fish and sounds ar
 > - **Phases 3–9** were written on a machine without a GPU. They pass the type check, lint, 155 unit tests and the
 >   build.
 > - **Not yet run:** the browser tests, the benchmarks and the visual checks for Phases 3–9. They are tracked as
->   [local GPU checks](docs/plan.md#local-gpu-checks-run-on-your-pc) (G1–G23), and the parts most likely to need
+>   [local GPU checks](docs/plan.md#local-gpu-checks-run-on-your-pc) (G1–G24), and the parts most likely to need
 >   tuning are listed as open points P14–P27.
 
 ## Quick start
@@ -113,8 +116,9 @@ The design rules, and how each one is enforced:
 2. **Workers simulate; the main thread renders.** Commands go to the workers through Comlink. Large results (the flow
    field, fish states) come back through SharedArrayBuffers, each one double-buffered with a version number
    ([`doubleBuffer.ts`](src/sim/shared/doubleBuffer.ts)) so readers never see a half-written frame.
-   SharedArrayBuffer needs cross-origin isolation, so `vite.config.ts` sends COOP/COEP headers. Because of those
-   headers, **everything has to be bundled locally**: no CDN scripts, fonts or textures.
+   SharedArrayBuffer needs cross-origin isolation, so `vite.config.ts` sends COOP/COEP headers (on GitHub Pages a
+   service worker adds them, see [Deploying](#deploying-to-github-pages)). Because of those headers, **everything has
+   to be bundled locally**: no CDN scripts, fonts or textures.
 3. **React shows state; it doesn't run the world.** The engine writes snapshots into the Zustand store a few times a
    second, and UI actions call engine methods. Nothing in React re-renders every frame.
 4. **Runs are reproducible.** Randomness comes from seeded generators ([`rng.ts`](src/sim/rng.ts)) and the simulation
@@ -174,7 +178,7 @@ clock → wind and time uniforms → flow textures → active camera (explore / 
 | [`src/state/`](src/state) | Zustand store, valley settings (saved in files), per-browser preferences, quality presets |
 | [`src/engine/`](src/engine) | The three.js side. `Engine.ts` (renderer, loop, stats, device loss) and [`world/World.ts`](src/engine/world/World.ts), which wires every system together. Systems live in `terrain/`, `sky/`, `water/`, `vegetation/`, `fauna/`, `ecology/` (the worker bridge and fish hand-off), `weather/`, `photo/`, `overlays/` and `builder/`. Also `post/pipeline.ts`, `bench.ts` and `thumbnails.ts` |
 | [`src/sim/`](src/sim) | Pure simulation: `terrain/`, `flow/`, `boids/`, `ecology/`, `weather/`, `wind/`, `time/` (clock, sun and moon), `scatter/`, `particles/`, `fauna/`, `shared/`, `rng.ts`, `noise.ts` |
-| [`src/workers/`](src/workers) | Four workers, each a thin Comlink wrapper around `src/sim` |
+| [`src/workers/`](src/workers) | Four workers, each a thin Comlink wrapper around `src/sim`, plus the service worker for GitHub Pages (`isolation.sw.ts`) |
 | [`src/procgen/`](src/procgen) | Seeded geometry: fish bodies, bamboo, tree ferns and other plants, rocks, the EZ-Tree wrapper |
 | [`src/builder/`](src/builder) | Pure builder logic: placement rules, analytic picking, brushes, the edit layer, undo/redo |
 | [`src/audio/`](src/audio) | Audio graph and listener (`AudioEngine`), sound emitters fed by the simulation (`NatureAudio`), the mix for where you stand (`scene.ts`), synthesis in `dsp/`, `worklets/` |
@@ -321,6 +325,24 @@ open Chrome against a running `pnpm dev`.
   are briefly given `count = 1` so they compile too; anything added later compiles in the middle of a frame.
 - **Rapier:** the heightfield is column-major, and `world.step()` must run once before raycasts hit anything.
 - **`public/assets/` is generated and never committed.** CC0 sources live in `assets-src/` under Git LFS.
+- **Build runtime URLs from `import.meta.env.BASE_URL`, never a leading `/`.** The base is `/` locally but
+  `/Riffle/` on GitHub Pages. Vite already rewrites the URLs in `index.html` and its own imports.
+
+## Deploying to GitHub Pages
+
+[`.github/workflows/pages.yml`](.github/workflows/pages.yml) publishes every push to `main`. In the repo's
+**Settings → Pages**, the source must be **GitHub Actions**; "Deploy from a branch" would publish the TypeScript
+sources unbuilt, and the page would stay empty. The workflow:
+
+1. checks out the LFS textures (cached between runs) and runs `pnpm assets`;
+2. builds with `vite build --base /<repo>/`;
+3. uploads `dist/` with `actions/deploy-pages`.
+
+GitHub Pages can't send the COOP/COEP headers that SharedArrayBuffer needs, so the build ships a small service worker
+([`isolation.sw.ts`](src/workers/isolation.sw.ts), emitted as `coi-sw.js` next to `index.html`). It re-serves the
+site's own responses with those headers. [`app/isolation.ts`](src/app/isolation.ts) registers it only when the page
+isn't already isolated. That means the first visit reloads once, and `pnpm dev`/`pnpm start` never use it. If
+isolation still fails, the page explains why instead of breaking later.
 
 ## Project docs
 

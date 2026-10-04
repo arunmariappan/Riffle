@@ -52,9 +52,11 @@ function loadTexture(url: string, srgb: boolean, fallback: number): THREE.Textur
 }
 
 export function loadLayer(id: string, color: number, withNormal = true): Layer {
+  // BASE_URL is '/' locally and '/Riffle/' on GitHub Pages.
+  const dir = `${import.meta.env.BASE_URL}assets/textures/${id}`;
   return {
-    diffuse: loadTexture(`/assets/textures/${id}/diffuse.webp`, true, color),
-    normal: withNormal ? loadTexture(`/assets/textures/${id}/nor_gl.webp`, false, 0x8080ff) : null,
+    diffuse: loadTexture(`${dir}/diffuse.webp`, true, color),
+    normal: withNormal ? loadTexture(`${dir}/nor_gl.webp`, false, 0x8080ff) : null,
   };
 }
 
