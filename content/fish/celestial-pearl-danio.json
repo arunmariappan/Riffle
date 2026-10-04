@@ -27,7 +27,7 @@
     "rheotaxis": 0.5,
     "curiosity": 0.15
   },
-  "habitat": { "depth": [0.08, 1], "flow": [0, 0.2], "temperature": [18, 27], "oxygenMin": 5 },
+  "habitat": { "depth": [0.08, 1], "flow": [0, 0.2], "temperature": [16, 27], "oxygenMin": 5 },
   "diet": ["insects", "algae"],
   "spawning": { "seasons": ["premonsoon", "monsoon"], "ground": "plants" },
   "life": { "maturityYears": 0.4, "lifespanYears": 3, "fecundity": 30 },

@@ -5,7 +5,7 @@ test.describe('the fish (Phase 5)', () => {
   test.setTimeout(360_000);
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/?autostart&freeze&spot=pool&hour=11&day=290');
+    await page.goto('/?autostart&freeze&allfish&spot=pool&hour=11&day=290');
     await waitForReady(page, 300_000);
     await page.waitForTimeout(8000); // let the schools settle into their water
   });

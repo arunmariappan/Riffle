@@ -91,6 +91,8 @@ export class WorldItems {
   private readonly falling: Falling[] = [];
   /** Revision bumped on every change (UI refreshes). */
   revision = 0;
+  /** Called when you release a school or take one back (the ecosystem counts them in), not when loading. */
+  onFishChange: ((item: PlacedItem, added: boolean) => void) | null = null;
 
   constructor(parts: WorldParts) {
     this.p = parts;
@@ -303,6 +305,7 @@ export class WorldItems {
         const id = this.nextSchool++;
         this.schools.set(item.uid, { id, item: { ...item } });
         await fish.release(index, item.x, item.z, item.count ?? 12, 1.5 + Math.sqrt(item.count ?? 12) * 0.35, id);
+        if (options.record !== false) this.onFishChange?.(item, true);
         break;
       }
     }
@@ -345,6 +348,7 @@ export class WorldItems {
         const school = this.schools.get(uid);
         if (school) await this.p.fish.removeSchool(school.id);
         this.schools.delete(uid);
+        if (options.record !== false) this.onFishChange?.(item, false);
         break;
       }
     }
@@ -606,7 +610,7 @@ export class WorldItems {
 
   // --- Loading -------------------------------------------------------------------------------------------------
 
-  /** Registers a fish school created at load (the first barbs), so it has a uid like everything else. */
+  /** Registers a fish school created outside the builder, so it has a uid like everything else. */
   registerSchool(item: PlacedItem, id: number): void {
     this.schools.set(item.uid, { id, item: { ...item } });
     this.nextSchool = Math.max(this.nextSchool, id + 1);

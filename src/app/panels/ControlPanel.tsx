@@ -8,6 +8,7 @@ import { LIMITS } from '../../state/settings';
 import { beaufort, CALM_BREEZE, MONSOON_STORM } from '../../sim/wind/windField';
 import { WEATHER_KINDS, WEATHER_NAMES } from '../../sim/weather/weather';
 import { TIME_SPEEDS } from '../../sim/time/clock';
+import { EcosystemPanel } from './EcosystemPanel';
 import styles from '../ui.module.css';
 
 const SPEEDS: [string, number][] = [
@@ -37,7 +38,10 @@ function hourLabel(h: number): string {
   return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
 }
 
-/** The control panels (plan 6.8): Water, Wind, Trees, Time & weather. Every slider changes the world live. */
+/**
+ * The control panels (plan 6.8): Water, Wind, Trees, Time & weather, Ecosystem (6.6). Every slider changes the world
+ * live.
+ */
 export function ControlPanel({ builder }: { builder: Builder }) {
   const settings = useUi((s) => s.settings);
   const clock = useUi((s) => s.clock);
@@ -59,6 +63,9 @@ export function ControlPanel({ builder }: { builder: Builder }) {
         </Tabs.Trigger>
         <Tabs.Trigger className={styles.tab} value="time">
           Time &amp; weather
+        </Tabs.Trigger>
+        <Tabs.Trigger className={styles.tab} value="ecosystem" data-testid="tab-ecosystem">
+          Ecosystem
         </Tabs.Trigger>
       </Tabs.List>
 
@@ -268,6 +275,10 @@ export function ControlPanel({ builder }: { builder: Builder }) {
             </option>
           ))}
         </select>
+      </Tabs.Content>
+
+      <Tabs.Content className={styles.tabBody} value="ecosystem">
+        <EcosystemPanel builder={builder} />
       </Tabs.Content>
     </Tabs.Root>
   );

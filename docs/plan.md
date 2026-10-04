@@ -55,7 +55,7 @@ on your PC later. This section is updated at the end of every phase; each phase 
 | 3 — Wind and vegetation | M2 | **Code done** (G1–G4 pending) | One wind state for every consumer, tree ferns, ferns, wildflowers and orchids, six water plants placed by depth and current, grass that bends away from you, falling petals, leaves and pollen, waterfall spray and mist, season looks; e2e and storm benchmark written. Not seen on screen yet |
 | 4 — Builder | M2 | **Code done** (G5–G6 pending) | UI shell and start screen (continue, open a file), builder camera, catalog with live thumbnails, drag and drop with a ghost and placement reasons, stones that fall and settle with Rapier, scatter/eraser/grass brushes, springs, gizmo and multi-select, 100-step undo/redo, Water/Wind/Trees/Time & weather panels, flow and depth/speed overlays, OPFS autosave and `.riffle` files. Not seen on screen yet |
 | 5 — Fish | M3 | **Code done** (G7–G10 pending) | All six species from content files with their own bodies, fins and patterns (stripes, pearl spots, leopard spots, koi patches, gold metallic scales, a shining lateral line), iridescence and backlit fins; genes per fish; habitat seeking, loaches clinging in the rapids, rises to insects, food, curiosity, night rest, koi gliding; the pond for koi; inspect and follow; a 500-fish benchmark. Not seen on screen yet |
-| 6 — Ecosystem and evolution | M3 | Not started | |
+| 6 — Ecosystem and evolution | M3 | **Code done** (G11–G14 pending) | The ecology worker: the stream as 50 m stretches with their water (temperature, oxygen and its dawn low, light, insects, algae, nutrients), fish cohorts with five heritable traits (breeder's equation; predators pull color one way, mates the other; koi patterns mix), the mahseer's monsoon run, the kingfisher, weather that follows the seasons with a catchment (rain raises and clouds the stream after a delay), plants that grow, spread and die back, individual fish near the camera handed off from the cohorts, rain, rain rings, wet ground, lightning, the Ecosystem panel with graphs, saves version 2. Reproducible, balanced for 10 years, both adaptation experiments pass (unit tests). Not seen on screen yet |
 | 7 — Spatial nature audio | M4 | Not started | |
 | 8 — Photo mode and time-lapse | M4 | Not started | |
 | 9 — Polish and hardening | M4 | Not started | |
@@ -81,9 +81,12 @@ on your PC later. This section is updated at the end of every phase; each phase 
 | P15 | **The builder hasn't been seen on screen** (cloud session, no GPU). Most likely to need a fix after G6: the gizmo (three's `TransformControls` on WebGPU), the thumbnail orientation and lighting (read back from a render target), the overlay drape's texture orientation, and the ghost ring height. The logic behind them (undo, placement rules, edit layer, saving, picking, brushes) is unit-tested. | You (G5, G6), then a session with the fixes | Phase 4 | Open |
 | P16 | **Fish schools can be released but not selected or moved** in the builder. Phase 5 added inspecting and following a single fish (click it in Build, E in Explore); schools stay unmovable on purpose (fish move themselves). | — | Phase 4 | **Closed** (Phase 5) |
 | P17 | **Springs (side brooks) add their water to the stream and bubble where they join**, but there is no visible brook channel running down the bank. | Me | Phase 4 | Open (Phase 9) |
-| P18 | **Weather "Follow the seasons"** gives each season its sky, haze and dawn mist; the choices in the Time & weather panel set clear, overcast, mist, rain, downpour or storm skies. Rain falling, rain rings, wet surfaces and rain raising the discharge come with Phase 6's weather. | Me | Phase 4 | Open (Phase 6) |
+| P18 | **Weather "Follow the seasons"** gives each season its sky, haze and dawn mist; the choices in the Time & weather panel set clear, overcast, mist, rain, downpour or storm skies. Rain falling, rain rings, wet surfaces and rain raising the discharge came with Phase 6 (look in G12). | — | Phase 4 | **Closed** (Phase 6) |
 | P19 | **The fish haven't been seen on screen.** Most likely to need tuning after G9: pattern scales on each body (spot sizes, stripe widths), fin transparency and the backlight, the banked-turn roll, iridescence strength, and koi pattern variety. | You (G9), then a session with the fixes | Phase 5 | Open |
 | P20 | **GPU minnow and danio schools** (the plan's optional thousands of fish on compute shaders) are not built; all fish are CPU agents (up to 2,000 in the shared buffer). | Me | Phase 5 | Open (optional) |
+| P21 | **The Phase 6 visuals haven't been seen on screen**: rain streaks, rings on the water, wet ground and stones, the lightning flash, the kingfisher, the Ecosystem panel's graphs and the ecology overlays. Most likely to need tuning after G12–G13: rain density and brightness, the ring size, how dark wet ground gets, the flash strength, the bird's scale and colors. The simulation behind them is unit-tested. | You (G12, G13), then a session with the fixes | Phase 6 | Open |
+| P22 | **Trees and grass don't take part in the plant ecology yet**: ground plants and water plants grow, spread and die back (C25), but trees stay as placed and the grass density doesn't respond to moisture (only its look follows the season). | Me | Phase 6 | Open (later) |
+| P23 | **Fish are shown individually only near the camera** (the two-level hand-off: stretches within about 80 m). Looking down from high in the builder, far stretches show no fish. `?allfish` shows every stretch at once (tests, the fish benchmark). | — | Phase 6 | Accepted |
 
 ### Changes from the plan made during implementation
 
@@ -112,6 +115,9 @@ on your PC later. This section is updated at the end of every phase; each phase 
 | C21 | Picking with three-mesh-bvh | Analytic picking: rays against the height map, the water surface, ellipsoids (stones) and cylinders (trees, plants) in pure TypeScript (`src/builder/picking.ts`) | Instanced items aren't Object3Ds; analytic shapes are simpler, fast and unit-tested |
 | C22 | Fish placement checks water temperature from the ecology grids | A water-temperature model (`src/sim/ecology/temperature.ts`): seasons, the daily swing, lag behind the air, cooler fast or shaded water, a warmer pond | The ecology grids arrive in Phase 6; the same model feeds them |
 | C23 | One instanced mesh per body template | One per species: each has its own fins (forked, flowing, rounded, suction), barbels and pattern shader | Each species' pattern compiles to its own small shader instead of one big branching one |
+| C24 | Environment grids of 4 m cells (about 250 × 250) in the ecology worker | The environment per stretch (about 50 m): water temperature, oxygen and its dawn minimum, light, insects, algae, nutrients, turbidity. Canopy shade and the overlays use a 4 m grid | The fish cohorts live per stretch (D19), so that is the scale they read; it keeps a 10-year run near 1 s and exactly reproducible |
+| C25 | Every plant takes part, and grass and plant carpets are density fields re-scattered by tile | Ground plants and water plants grow, spread (wind seeds downwind, fragments and plantlets downstream, runners) and die back as individuals, each with a growth-versus-spread gene; trees and grass stay as placed (P22) | The individual plants are where the spreading shows; tolerance curves for them are in their JSON files |
+| C26 | The discharge slider sets the stream's flow | The slider sets the usual (dry-weather) flow; the seasons and the catchment scale it (about ×0.6 before the monsoon, ×1.4 in it, more for a day or two after heavy rain). "Rain raises the stream" in the Ecosystem panel turns it off; valleys saved before Phase 6 open with it off | Rain raising the discharge after a delay (plan 6.7) needs the stream to follow the weather; old saves keep the stream they had |
 
 ### Local GPU checks (run on your PC)
 
@@ -131,6 +137,10 @@ wait for P1/P2. Commands assume `pnpm dev` is running, except the benchmark (`pn
 | G8 | **500 fish within the budget**: the `fish` flight tops the valley up to about 500 fish and checks fps, GPU time and draw calls | `pnpm bench` (third flight) | 5 | Open (test written) |
 | G9 | **First look at the fish**, side by side with reference photos (P6) when you have them: each species recognizable (gold mahseer with reddish fins, barb's red-over-black stripe, minnow's gold line and red fins, danio pearls and orange fins, leopard loach clinging flat to rocks, koi patches and long fins), elegant in motion (wave, banked turns, koi gliding, fins rippling), fins glowing against the sun | `npx tsx tools/views.ts test-results/p5`, then `pnpm dev`: E on a fish, Follow; F at the pond | 5 | Open |
 | G10 | **10-minute fish soak** in the browser: no fish leaves the water (the same check runs in Node in `tests/unit/fish.test.ts`) | A long GPU run: waits for P1 | 5 | Open (after P1) |
+| G11 | **Phase 6 e2e** (`tests/e2e/ecology.spec.ts`): the Ecosystem panel shows the populations and graphs; a season time-lapse moves the valley on (days pass, graph points arrive, populations change); a downpour brings rain drops, wet ground, then within 30 s a stream 30% higher and cloudier; walking down the stream, fish appear out of sight and fold back far away (no more than 2% appear within 20 m ahead or vanish within 50 m); the kingfisher comes by and leaves when switched off; the autosave keeps the ecosystem. Also re-run G7: `fish.spec.ts` now uses `?allfish` | `pnpm test:e2e tests/e2e/ecology.spec.ts`, then `pnpm test:e2e tests/e2e/fish.spec.ts` | 6 | Open (tests written) |
+| G12 | **First look at the weather** (a few minutes, `pnpm dev`): Build → Time & weather → Monsoon downpour: rain streaks tilt with the wind and dim at night, rings dot the stream and the pond, the ground and stones turn darker and glossier and dry afterwards; Storm: lightning flashes (not blinding) and strong gusts; after heavy rain the stream rises and turns cloudy | Manual, `pnpm dev` | 6 | Open |
+| G13 | **First look at the kingfisher, the Ecosystem panel and the hand-off**: the bird's blue back, orange breast and size, perching, flying low, hovering and diving with a splash; the graphs readable; the Oxygen, Light, Temperature and Fish overlays line up with the water; walking along the stream, fish never pop in or out in front of you | Manual, `pnpm dev` (Ecosystem tab; Season lapse for a minute) | 6 | Open |
+| G14 | **Season-lapse soak**: 10 minutes at Season lapse (about 5 simulated years): fps steady, no memory growth, the flow re-solves after rain don't hitch | A long GPU run: waits for P1 | 6 | Open (after P1) |
 
 ### Handoff to the cloud session
 
@@ -1135,6 +1145,69 @@ populations or extinctions; two **adaptation experiments** pass: in a fast-flow 
 rises over 20 generations (and in a slow valley it doesn't), and with low predator pressure the average color
 brightness rises over 20 generations; individual fish hand off to cohorts and back without visible
 popping.
+
+**Built (2026-10-04, cloud session; code done, not seen on screen yet, see P21 and G11–G14):**
+- **Stretches** (`src/sim/ecology/stretches.ts`): the solved stream is cut into stretches of about 50 m (never across
+  the waterfall, which fish can't climb), plus the pond. Each summarizes its water from the flow cells: wetted area,
+  depth, current and the share of fast and slow water, turbulence, shelter, canopy shade (`canopy.ts`, from the
+  trees), clean gravel and plant margins for spawning, and how well it suits each species.
+- **Environment** (`environment.ts`, daily per stretch, C24): water temperature (the Phase 4 model), dissolved oxygen
+  at the valley's altitude with re-aeration in riffles, photosynthesis by day and a pre-dawn low, light from day
+  length, cloud, canopy and murky water, drifting insects by season, riffles, plants and overhanging trees, algae
+  that grow with light and nutrients and are grazed and scoured by floods, and nutrients from leaf litter and fish
+  waste. The pond warms, grows algae and loses oxygen at dawn when crowded.
+- **Weather and the catchment** (`src/sim/weather/weatherSystem.ts`): weather states follow each other with each
+  season's odds (dry clear winters, pre-monsoon storms, monsoon downpours) and their own durations; rain fills a
+  linear-reservoir catchment that drains into the stream over about a day and a half on top of a seasonal base flow,
+  and washes silt in. The Water panel's flow is the dry-weather level, scaled by the catchment (C26).
+- **Fish cohorts** (`cohorts.ts`): per stretch and species, fry, juveniles and adults with the mean and variance of
+  each trait. Daily: growth through the stages, deaths from age, starvation, low dawn oxygen, heat and cold, crowding
+  and predators, spawning in each species' seasons on its ground (gravel, plants, the pond). Recruitment is
+  Beverton–Holt, calibrated per species from its life history so populations settle at their stretches' carrying
+  capacity (area × suitability × food × temperature). Fish spread to better neighboring water; the mahseer run
+  upstream to the gravel in the monsoon floods and drop back to the pools in autumn, their young drifting down.
+- **Food chain and predators**: insects and algae feed the small fish; small fish feed the mahseer; the optional
+  kingfisher hunts the shallows. Brighter fish are easier to catch.
+- **Genetics** (`genetics.ts`): five traits (body size, swim strength, preferred flow, color brightness, shyness)
+  respond by the breeder's equation (Lande's Δmean = h² · variance · β) to selection from the stretch: fast water
+  favors strong swimmers, predators favor dull, shy, bigger fish, scarce food favors small bold ones, and mate choice
+  favors brightness. Mutation keeps the variance alive; koi pattern seeds mix between parents.
+- **Reproducible** (`ecology.ts`): fixed hourly and daily steps from a seed; the whole state hashes and saves
+  exactly. A safety net (on by default) brings a few fish back to a species that nearly vanishes.
+- **Plants** (`plants.ts`, C25): ground plants and water plants have tolerance curves (now in their JSON files) for
+  light, moisture, temperature, depth and current; fit plants grow and spread (wind seeds downwind, fragments and
+  plantlets downstream, runners nearby) by the placement rules, unfit ones shrink and die. A growth-versus-spread
+  gene passes to the offspring.
+- **The two-level hand-off** (`view.ts`, `src/engine/ecology/EcologySystem.ts`): stretches within 80 m of the camera
+  show schools drawn from their cohorts (genes, ages, koi patterns; juveniles smaller); beyond 110 m they fold back.
+  Shown counts follow the populations within a budget, and new fish only appear out of sight (far, or behind you).
+  The fish the valley started with in Phase 5 now come from the ecology; fish you release join their stretch's
+  cohort.
+- **The ecology worker** (`src/workers/ecology.worker.ts`): catches the ecosystem up to the clock (up to 120 days a
+  call; a jump back or of years just moves the date) and reports the populations, the weather, the stream and every
+  stretch's water.
+- **Weather you can see**: rain streaks around the camera computed in the vertex shader (`src/engine/weather/Rain.ts`),
+  raindrop rings on the stream and the pond, ground and stones that darken and shine when wet and dry over a few
+  hours, storm gusts on top of the Wind panel's wind, lightning flashes (a hook for Phase 7's thunder), and a cloudier
+  stream after heavy rain.
+- **The kingfisher** (`src/sim/fauna/kingfisher.ts`, `src/engine/fauna/Kingfisher.ts`): a small generated bird that
+  arrives near you in the daytime, perches on stones and banks, flies low along the stream, hovers and dives with a
+  splash; switched off with its predation.
+- **Ecosystem panel** (`src/app/panels/EcosystemPanel.tsx`): time speed and the season lock, "Rain raises the
+  stream", the weather, flow, temperature and oxygen now, each species' numbers with its average brightness and swim
+  strength, the plants' growth-versus-spread gene, uPlot graphs (populations, biodiversity, water quality, color
+  brightness over the years), evolution on/off, mutation rate, predator pressure, population caps, the kingfisher, the
+  seed-stock floor, and the overlays (flow, oxygen, light, temperature, fish).
+- **Saves, version 2**: the ecosystem's state rides in the `ecology` and `plants` sections; a migration opens
+  version 1 valleys (tested with a version 1 fixture) with their stream as saved (C26).
+- **Tests**: 123 unit tests (+37). The plan's done-when checks run in Node: the same seed and inputs give the same
+  valley and different ones don't; the synthetic valley and the **real generated valley** (terrain and solved stream)
+  stay balanced for 10 years with no extinctions or runaways; over 20 generations swim strength rises by more than 0.1
+  in a fast valley and not in a slow one; brightness rises with low predator pressure and falls with high; the mahseer
+  move upstream in the monsoon; saves restore exactly. Plus the hand-off planner, plants, canopy, weather and
+  catchment, genetics, the kingfisher and the save migration. e2e `tests/e2e/ecology.spec.ts` (G11).
+- **Not met yet**: "individual fish hand off to cohorts and back without visible popping" is built and unit-tested but
+  needs the browser check (G11, G13).
 
 ### Phase 7 — Spatial nature audio (M)
 

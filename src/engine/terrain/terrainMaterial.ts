@@ -1,4 +1,5 @@
 import * as THREE from 'three/webgpu';
+import { globals } from '../globals';
 import {
   texture,
   uniform,
@@ -211,8 +212,15 @@ export function createTerrainMaterial(
   const under = smoothstep(-0.02, 0.06, below);
   const wetLine = smoothstep(-0.4, 0.0, below).mul(float(1).sub(under));
   ground = ground.mul(float(1).sub(wetLine.mul(0.35)).sub(under.mul(0.12)));
+  // Rain darkens the ground and gives it a sheen (plan 6.7), less under the forest canopy.
+  const rainWet = globals.wetness.mul(float(1).sub(under)).mul(float(1).sub(canopyMask.mul(0.5)));
+  ground = ground.mul(float(1).sub(rainWet.mul(0.3)));
   m.colorNode = vec4(ground, 1);
-  m.roughnessNode = mix(float(0.92), float(0.3), wetBand.max(bed).max(wetLine).max(under).mul(0.9));
+  m.roughnessNode = mix(
+    float(0.92),
+    float(0.3),
+    wetBand.max(bed).max(wetLine).max(under).max(rainWet.mul(0.7)).mul(0.9),
+  );
   m.emissiveNode = ground.mul(causticLight(positionWorld, waterLevel));
 
   // Normal detail on the cliffs (triplanar rock normal map).

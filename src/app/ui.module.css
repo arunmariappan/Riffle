@@ -489,3 +489,34 @@
   height: 100%;
   background: var(--gold);
 }
+
+.graph {
+  width: 100%;
+  min-height: 200px;
+  font-size: 11px;
+  color: var(--text);
+}
+
+.graph :global(.u-legend) {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.ecoTable {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ecoRow {
+  display: grid;
+  grid-template-columns: 1fr 52px 44px 44px;
+  gap: 6px;
+}
+
+.ecoRow span:not(:first-child) {
+  color: var(--muted);
+  text-align: right;
+}

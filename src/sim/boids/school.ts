@@ -235,7 +235,7 @@ export class School {
     count: number,
     spread = 2,
     school = 0,
-    genes?: (k: number) => { genes: FishGenes; age?: number },
+    genes?: (k: number) => { genes: FishGenes; age?: number; pattern?: number },
   ): number {
     const sp = this.species[speciesIndex] as SpeciesBehavior;
     let placed = 0;
@@ -269,7 +269,7 @@ export class School {
         fleeing: 0,
         genes: g,
         age: given?.age ?? this.rng.range(1, 3),
-        pattern: this.rng.next(),
+        pattern: given?.pattern ?? this.rng.next(),
         rising: 0,
         rose: false,
         clinging: false,

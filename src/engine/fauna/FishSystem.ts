@@ -95,7 +95,7 @@ export class FishSystem {
     count: number,
     spread = 2.5,
     school = 0,
-    genes?: { genes: FishGenes; age?: number }[],
+    genes?: { genes: FishGenes; age?: number; pattern?: number }[],
   ): Promise<number> {
     return (await this.api?.release(index, x, z, count, spread, school, genes)) ?? 0;
   }

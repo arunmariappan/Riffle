@@ -38,10 +38,14 @@ import {
 import { grassDensityAt } from '../../sim/scatter/grassDensity';
 import { WorldItems, stonesForFlow } from './WorldItems';
 import { OverlaySystem } from '../overlays/Overlays';
-import { defaultSettings, normalizeSettings, type ValleySettings } from '../../state/settings';
+import { LIMITS, defaultSettings, normalizeSettings, type ValleySettings } from '../../state/settings';
 import { WEATHER_LOOKS, blendWeather, type WeatherLook } from '../../sim/weather/weather';
 import { SAVE_VERSION, type SaveData } from '../../save/saveData';
-import { cloneEditLayer, generatedUid, type PlacedItem } from '../../builder/editLayer';
+import { cloneEditLayer } from '../../builder/editLayer';
+import { EcologySystem } from '../ecology/EcologySystem';
+import { Rain } from '../weather/Rain';
+import { Kingfisher } from '../fauna/Kingfisher';
+import type { KingfisherWorld } from '../../sim/fauna/kingfisher';
 
 export interface WorldOptions {
   seed: string;
@@ -52,22 +56,13 @@ export interface WorldOptions {
   spot?: string;
   /** A saved valley to restore on top of the generated one (plan 6.11). */
   restore?: SaveData;
+  /** Its binary sections (the ecosystem's state). */
+  restoreSections?: Record<string, Uint8Array>;
+  /** Show fish in every stretch at once instead of near the camera (tests, the fish benchmark). */
+  allFish?: boolean;
 }
 
 export type CameraMode = 'explore' | 'builder' | 'photo' | 'fixed' | 'follow';
-
-/**
- * The fish the valley starts with (plan 6.5): each species where it lives. Phase 6's ecology takes over from here.
- * Zone, school count and fish per school.
- */
-const STARTING_FISH: { id: string; zone: string; schools: number; count: number }[] = [
-  { id: 'denison-barb', zone: 'riffles', schools: 3, count: 18 },
-  { id: 'hillstream-loach', zone: 'rapids', schools: 2, count: 10 },
-  { id: 'golden-mahseer', zone: 'pool', schools: 1, count: 4 },
-  { id: 'white-cloud-minnow', zone: 'bend', schools: 2, count: 25 },
-  { id: 'celestial-pearl-danio', zone: 'bend', schools: 1, count: 20 },
-  { id: 'koi', zone: 'pond', schools: 1, count: 6 },
-];
 
 const QUALITY_GRASS: Record<QualityPreset, number> = { low: 0.35, medium: 0.6, high: 1, ultra: 1.3 };
 /** Render resolution per preset; TRAA upscales to the output (plan D9). */
@@ -96,6 +91,16 @@ export class World {
   readonly air: AirParticles;
   /** Waterfall spray and mist, splashes. */
   readonly waterFx: WaterEffects;
+  /** Falling rain around the camera. */
+  readonly rain: Rain;
+  /** The kingfisher (an optional predator from above, plan 6.6). */
+  readonly kingfisher: Kingfisher;
+  /** The ecosystem: stretches, cohorts, plants, weather and the catchment (plan 6.6, 6.7). */
+  readonly ecology: EcologySystem;
+  /** 0..1 how wet the ground is after rain. */
+  wetness = 0;
+  /** Called on each lightning flash with the delay until its thunder (seconds) and its strength (Phase 7 audio). */
+  onLightning: ((thunderDelay: number, strength: number) => void) | null = null;
   /** Every placed thing behind stable ids, and your edit layer (plan 6.4, 6.8). */
   readonly items: WorldItems;
   readonly overlays: OverlaySystem;
@@ -122,6 +127,12 @@ export class World {
   private pipeline: PipelineHandle;
   private seasonTimer = 0;
   private flowRevision = -1;
+  private stretchRevision = -1;
+  private stretchTimer = 0;
+  private lightningTimer = 4;
+  /** Exposure before lightning flashes. */
+  private exposure = 1;
+  private flash = 0;
   private unsubscribe: (() => void) | null = null;
   private readonly modeListeners = new Set<(mode: CameraMode) => void>();
 
@@ -140,6 +151,7 @@ export class World {
     wind: WindUniforms;
     quality: QualityPreset;
     clock: SimClock;
+    allFish?: boolean;
   }) {
     this.engine = parts.engine;
     this.valley = parts.valley;
@@ -156,6 +168,9 @@ export class World {
     this.plants.setFlow(this.flow);
     this.air = new AirParticles((x, z) => this.heightAt(x, z));
     this.waterFx = new WaterEffects();
+    this.rain = new Rain();
+    this.kingfisher = new Kingfisher();
+    this.kingfisher.onSplash = (x, y, z) => this.waterFx.splash(x, y, z, 0.1);
     this.wind = parts.wind;
     this.windState = { ...this.settings.wind };
     this.quality = parts.quality;
@@ -193,6 +208,8 @@ export class World {
       this.waterFx.group,
       this.fish.group,
       this.overlays.group,
+      this.rain.mesh,
+      this.kingfisher.group,
     );
     this.sky = new SkySystem(renderer, scene, camera, 260);
     this.sky.sky.material.fog = false;
@@ -207,6 +224,8 @@ export class World {
     this.player = new ExplorePlayer(this.physics, new THREE.Vector3(start.x, this.heightAt(start.x, start.z), start.z));
     this.player.setWater(this.flow);
     this.lookFrom(start);
+    this.ecology = new EcologySystem(this, { allFish: parts.allFish });
+    this.items.onFishChange = (item, added) => this.ecology.fishChanged(item, added);
   }
 
   /** In-stream stones as flow obstacles (top height above the bed, sunk part excluded). */
@@ -322,41 +341,8 @@ export class World {
       wind,
       quality: options.quality,
       clock,
+      allFish: options.allFish,
     });
-    // Every species starts where it lives (plan 6.5): barbs in the riffles, loaches in the rapids, mahseer in the pool,
-    // minnows and danios along the bend's calm margins, koi in the pond.
-    let schoolId = 1;
-    for (const start of STARTING_FISH) {
-      const index = fish.speciesIndex(start.id);
-      if (index < 0) continue;
-      for (let k = 0; k < start.schools; k++) {
-        const spot = world.findFishSpot(index, start.zone, (k + 0.5) / start.schools);
-        if (!spot) continue;
-        const placed = await fish.release(
-          index,
-          spot.x,
-          spot.z,
-          start.count,
-          1.5 + Math.sqrt(start.count) * 0.3,
-          schoolId,
-        );
-        if (placed === 0) continue;
-        const item: PlacedItem = {
-          uid: generatedUid('fish', schoolId - 1),
-          category: 'fish',
-          kind: start.id,
-          variant: 0,
-          x: spot.x,
-          y: heightAt(spot.x, spot.z),
-          z: spot.z,
-          yaw: 0,
-          scale: 1,
-          count: start.count,
-        };
-        world.items.registerSchool(item, schoolId);
-        schoolId++;
-      }
-    }
     fish.onRise = (x, z, length) => {
       const surface = flow.surfaceAt(x, z);
       if (surface !== null) world.waterFx.splash(x, surface, z, 0.03 + Math.min(0.5, length * 0.6));
@@ -368,6 +354,11 @@ export class World {
       await world.applySettings(world.settings);
       if (options.spot) world.goToSpot(options.spot);
     }
+    // The ecosystem starts from the solved stream (or continues from the save), and the first fish come in.
+    progress('Waking the valley', 0.915);
+    world.update({ dt: 0, time: 0, frame: 0 });
+    const sections = options.restoreSections ?? {};
+    await world.ecology.init({ ecology: sections.ecology, plants: sections.plants });
     world.update({ dt: 0, time: 0, frame: 0 });
     // Compile every material up front (asynchronously, behind the loading screen) instead of hitching later.
     progress('Preparing the light', 0.92);
@@ -397,13 +388,24 @@ export class World {
     return sampleHeight(this.valley.heightfield, x, z);
   }
 
-  /** Changes the wind (Wind panel, weather): updates the CPU state and every shader at once (plan 6.3). */
+  /** Changes the wind (Wind panel): updates the CPU state and every shader at once (plan 6.3). */
   setWind(change: Partial<WindState>): void {
-    Object.assign(this.windState, change);
-    const len = Math.hypot(this.windState.dirX, this.windState.dirZ) || 1;
-    this.windState.dirX /= len;
-    this.windState.dirZ /= len;
-    this.settings.wind = { ...this.windState };
+    const next = { ...this.settings.wind, ...change };
+    const len = Math.hypot(next.dirX, next.dirZ) || 1;
+    next.dirX /= len;
+    next.dirZ /= len;
+    this.settings.wind = next;
+    this.applyWind();
+  }
+
+  /** The wind everything feels: the panel's, strengthened by the weather (a storm brings strong gusts, plan 6.7). */
+  private applyWind(): void {
+    const set = this.settings.wind;
+    Object.assign(this.windState, {
+      ...set,
+      speed: Math.max(set.speed, this.weather.wind),
+      gustiness: Math.max(set.gustiness, this.weather.gustiness),
+    });
     (this.wind.direction as any).value.set(this.windState.dirX, this.windState.dirZ);
     (this.wind.speed as any).value = this.windState.speed;
     (this.wind.gustiness as any).value = this.windState.gustiness;
@@ -428,14 +430,29 @@ export class World {
     w.leafFlutter.value = s.trees.flutter;
     w.responseDelay.value = s.trees.delay;
     for (const id of this.trees.speciesIds()) this.trees.setSpeciesFlexibility(id, s.trees.species[id] ?? 1);
-    (this.flow.look.turbidity as any).value = 1 - s.water.clarity;
+    this.applyTurbidity();
     this.clock.timeScale = s.time.timeScale;
     this.clock.paused = s.time.paused;
     this.clock.lockedDay = s.time.lockedDay;
-    if (s.water.discharge !== this.flow.discharge) await this.flow.setDischarge(s.water.discharge);
+    this.ecology.setSettings(s.ecosystem);
+    this.ecology.setWeather(s.weather.mode);
+    await this.applyDischarge();
     if (s.water.speed !== this.flow.speedMultiplier) await this.flow.setSpeedMultiplier(s.water.speed);
     if (s.water.level !== this.flow.levelOffset) await this.flow.setLevelOffset(s.water.level);
     this.plants.invalidate();
+  }
+
+  /** The discharge the stream runs at: the Water panel's, times what the catchment adds after rain (plan 6.7). */
+  async applyDischarge(): Promise<void> {
+    const q = Math.min(LIMITS.discharge[1] * 1.5, this.settings.water.discharge * this.ecology.dischargeFactor);
+    if (Math.abs(q - this.flow.discharge) > 1e-6) await this.flow.setDischarge(q);
+  }
+
+  /** Water clarity: the panel's, clouded by silt the rain washes in. */
+  private applyTurbidity(): void {
+    const silt = this.ecology.silt;
+    (this.flow.look.turbidity as any).value = Math.min(1, 1 - this.settings.water.clarity + silt);
+    (this.flow.pondLook.turbidity as any).value = Math.min(1, 0.45 + silt * 0.4);
   }
 
   /**
@@ -603,6 +620,11 @@ export class World {
     };
   }
 
+  /** The binary save sections: the ecosystem's cohorts, environment and plants. */
+  saveSections(): Promise<Record<string, Uint8Array>> {
+    return this.ecology.saveSections();
+  }
+
   /** Restores a saved valley on top of the generated one (seed must match). */
   async restore(data: SaveData): Promise<void> {
     if (data.seed !== this.valley.seed) throw new Error('That valley was made from a different seed');
@@ -697,25 +719,93 @@ export class World {
     };
   }
 
-  /** The weather the season suggests when the Time & weather panel is on "auto" (Phase 6 makes it a real process). */
+  /**
+   * The weather on "Follow the seasons": the ecology's weather (it follows the seasons' odds: dry clear winters,
+   * pre-monsoon storms, monsoon downpours), plus the season's haze and the dawn mist over the water.
+   */
   private seasonalWeather(): WeatherLook {
     const w = this.clock.seasonWeights();
     const hour = this.clock.hour;
     const dawn = Math.max(0, 1 - Math.abs(hour - 6.5) / 2);
+    const kind = this.ecology.report?.weather ?? 'clear';
+    const look = WEATHER_LOOKS[kind];
     return {
-      cloudCover: 0.15 + w.monsoon * 0.5 + w.premonsoon * 0.15,
-      haze: 0.2 + w.monsoon * 0.45 + w.premonsoon * 0.25,
-      mist: dawn * (0.25 + w.monsoon * 0.4 + w.autumn * 0.3 + w.winter * 0.2),
-      rain: 0,
-      wind: 0,
-      gustiness: 0,
-      lightning: false,
+      ...look,
+      cloudCover: Math.max(look.cloudCover, 0.15 + w.monsoon * 0.5 + w.premonsoon * 0.15),
+      haze: Math.max(look.haze, 0.2 + w.monsoon * 0.45 + w.premonsoon * 0.25),
+      mist: Math.max(look.mist, dawn * (0.25 + w.monsoon * 0.4 + w.autumn * 0.3 + w.winter * 0.2)),
+    };
+  }
+
+  /** Lightning in a storm (plan 6.7): a flash every few seconds, its thunder after a delay by distance. */
+  private updateLightning(dt: number): number {
+    this.flash = Math.max(0, this.flash - dt * 7);
+    if (!this.weather.lightning) return this.flash;
+    this.lightningTimer -= dt;
+    if (this.lightningTimer <= 0) {
+      this.lightningTimer = 3 + Math.random() * 12;
+      const strength = 0.4 + Math.random() * 0.6;
+      this.flash = strength;
+      // Thunder travels 343 m/s; strikes are 0.3–4 km away.
+      this.onLightning?.((300 + Math.random() * 3700) / 343, strength);
+    }
+    // A flash flickers a couple of times.
+    return this.flash * (0.6 + 0.4 * Math.sin(this.flash * 40));
+  }
+
+  /** Perches, shallows and whether the kingfisher is about, for its brain. */
+  private kingfisherWorld(): KingfisherWorld {
+    const flow = this.flow;
+    const path = flow.path;
+    const hour = this.clock.hour;
+    const look = this.weather;
+    return {
+      active: this.settings.ecosystem.kingfisher && hour > 6.3 && hour < 18.3 && look.rain < 8 && !look.lightning,
+      perchNear: (x, z, minR, maxR) => {
+        for (let k = 0; k < 30; k++) {
+          const a = Math.random() * Math.PI * 2;
+          const r = minR + Math.random() * (maxR - minR);
+          const px = x + Math.cos(a) * r;
+          const pz = z + Math.sin(a) * r;
+          const near = this.flow.bankAt(px, pz);
+          if (!near) continue;
+          const i = near.section;
+          const side = near.offset < 0 ? -1 : 1;
+          const hw = (this.valley.profile.halfWidth[i] as number) ?? 5;
+          // A stone sticking out of the water, or the bank at the water's edge.
+          for (const st of this.rocks.stones) {
+            if ((st.x - px) ** 2 + (st.z - pz) ** 2 > 36) continue;
+            const surface = flow.surfaceAt(st.x, st.z);
+            const top = st.y + st.height * 0.95;
+            if (surface !== null && top > surface + 0.1) return { x: st.x, y: top, z: st.z };
+          }
+          const ex = (path.points[i * 2] as number) + (path.normals[i * 2] as number) * hw * side * 1.05;
+          const ez = (path.points[i * 2 + 1] as number) + (path.normals[i * 2 + 1] as number) * hw * side * 1.05;
+          const ground = this.heightAt(ex, ez);
+          const surface = flow.surfaceAt(ex, ez);
+          if (surface !== null && surface > ground + 0.05) continue;
+          return { x: ex, y: ground + 0.35, z: ez };
+        }
+        return null;
+      },
+      shallowsNear: (x, z) => {
+        for (let k = 0; k < 20; k++) {
+          const a = Math.random() * Math.PI * 2;
+          const r = 2 + Math.random() * 6;
+          const sx = x + Math.cos(a) * r;
+          const sz = z + Math.sin(a) * r;
+          const s = flow.sample(sx, sz);
+          if (s && s.depth > 0.2 && s.depth < 0.9 && Math.hypot(s.velocityX, s.velocityZ) < 0.8)
+            return { x: sx, z: sz, surface: s.surface };
+        }
+        return null;
+      },
     };
   }
 
   update(info: FrameInfo): void {
     const { camera } = this.engine;
-    this.clock.advance(info.dt);
+    const simDt = this.clock.advance(info.dt);
     const windTime = this.frozenTime ?? info.time;
     (this.wind.time as any).value = windTime;
     globals.time.value = windTime;
@@ -734,6 +824,21 @@ export class World {
       this.weather,
       blendWeather(this.weather, target, Math.min(1, info.dt * 0.6 + (info.frame < 2 ? 1 : 0))),
     );
+    // Lightning comes with the storm itself, not halfway through the blend.
+    this.weather.lightning = target.lightning;
+    this.applyWind();
+    this.ecology.update(info.dt);
+    this.applyTurbidity();
+    // Rain wets the ground; it dries over a few hours (simulated, at least a minute of real time).
+    const hours = Math.max(simDt, info.dt * 60) / 3600;
+    this.wetness = Math.min(
+      1,
+      Math.max(0, this.wetness + this.weather.rain * hours * 0.15 - this.wetness * hours * 0.3),
+    );
+    if (info.frame < 2) this.wetness = Math.min(1, this.weather.rain / 10);
+    globals.wetness.value = this.wetness;
+    globals.rain.value = Math.min(1, this.weather.rain / 25);
+    (this.terrain.look.rainWetness as any).value = this.wetness;
     const sky = this.clock.sky();
     const sun = new THREE.Vector3(...sky.sun);
     const moon = new THREE.Vector3(...sky.moon);
@@ -767,9 +872,10 @@ export class World {
       .setRGB(0.03 + turbidity * 0.12, 0.2 + turbidity * 0.05, 0.19 - turbidity * 0.06)
       .multiplyScalar(0.3 + sunLight * 0.7);
     const renderer = this.engine.renderer;
-    renderer.toneMappingExposure +=
-      (this.atmosphere.targetExposure - renderer.toneMappingExposure) *
-      Math.min(1, info.dt * 2 + (info.frame < 2 ? 1 : 0));
+    const flash = this.updateLightning(info.dt);
+    this.exposure +=
+      (this.atmosphere.targetExposure - this.exposure) * Math.min(1, info.dt * 2 + (info.frame < 2 ? 1 : 0));
+    renderer.toneMappingExposure = this.exposure * (1 + flash * 2.5);
 
     this.seasonTimer -= info.dt;
     if (this.seasonTimer <= 0) {
@@ -813,6 +919,22 @@ export class World {
       (x, z) => this.flow.surfaceAt(x, z) ?? this.heightAt(x, z),
     );
     this.fish.update(info.dt, this.player.position, this.clock.dayOfYear, this.clock.hour);
+    this.rain.update(
+      this.weather.rain,
+      this.windState.dirX * this.windState.speed,
+      this.windState.dirZ * this.windState.speed,
+      camera.position,
+      windTime,
+      sunLight + this.sky.hemi.intensity * 0.3,
+    );
+    this.kingfisher.update(info.dt, this.kingfisherWorld(), camera.position);
+    // The stretches follow the water after edits (a few seconds after the last change).
+    this.stretchTimer -= info.dt;
+    if (this.flow.revision !== this.stretchRevision && this.stretchTimer <= 0) {
+      this.stretchRevision = this.flow.revision;
+      this.stretchTimer = 10;
+      if (info.frame > 2) this.ecology.refreshStretches();
+    }
     const focus =
       this.mode === 'builder'
         ? new THREE.Vector3(this.builderCamera.goal.x, 0, this.builderCamera.goal.z)

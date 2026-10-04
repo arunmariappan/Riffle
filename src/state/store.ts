@@ -53,6 +53,33 @@ export interface FishInfo {
   following: boolean;
 }
 
+/** The Ecosystem panel's readout (plan 6.6), refreshed a few times a second. */
+export interface EcologyUi {
+  /** Species names, in the same order as the numbers below. */
+  names: string[];
+  /** Juveniles and adults per species in the whole valley, and fry. */
+  populations: number[];
+  fry: number[];
+  /** Average color brightness and swim strength (adults), 0..1. */
+  brightness: number[];
+  swimStrength: number[];
+  /** Shannon diversity of the fish. */
+  biodiversity: number;
+  /** Mean dissolved oxygen and the lowest dawn oxygen, mg/L; mean water temperature, °C. */
+  oxygen: number;
+  oxygenMin: number;
+  waterTemp: number;
+  /** The stream now, m³/s, and the weather the valley has. */
+  discharge: number;
+  weather: string;
+  turbidity: number;
+  /** Ground and water plants, and their average growth-versus-spread gene. */
+  plants: number;
+  plantGene: number;
+  /** Bumped when new graph points arrive. */
+  historyRevision: number;
+}
+
 export interface UiState {
   mode: AppMode;
   tool: BuilderTool;
@@ -75,6 +102,7 @@ export interface UiState {
   clock: ClockSnapshot;
   busy: string | null;
   inspect: FishInfo | null;
+  ecology: EcologyUi | null;
   set: (partial: Partial<UiState>) => void;
   toast: (text: string, kind?: Toast['kind']) => void;
   dismiss: (id: number) => void;
@@ -103,6 +131,7 @@ export const useUi = create<UiState>((set) => ({
   clock: { hour: 8, day: 95, season: 'spring', year: 0 },
   busy: null,
   inspect: null,
+  ecology: null,
   set: (partial) => set(partial),
   toast: (text, kind = 'info') => {
     const id = toastId++;

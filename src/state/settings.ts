@@ -1,6 +1,6 @@
 /**
- * Everything the control panels set (plan 6.8): water, wind, trees, time and weather. One plain object, so it is
- * saved as-is, compared in tests and applied to the world in one place. Pure TypeScript.
+ * Everything the control panels set (plan 6.8): water, wind, trees, time and weather, and the ecosystem (6.6). One
+ * plain object, so it is saved as-is, compared in tests and applied to the world in one place. Pure TypeScript.
  */
 import { CALM_BREEZE, type WindState } from '../sim/wind/windField';
 import { WEATHER_KINDS, type WeatherKind } from '../sim/weather/weather';
@@ -39,12 +39,43 @@ export interface WeatherSettings {
   mode: 'auto' | WeatherKind;
 }
 
+/** The Ecosystem panel (plan 6.6). */
+export interface EcosystemSettings {
+  /** Traits respond to selection over the generations. */
+  evolution: boolean;
+  /** Mutation rate multiplier. */
+  mutation: number;
+  /** Predator pressure 0..1 (kingfisher and mahseer). Low lets the fish grow more vivid. */
+  predators: number;
+  /** Population caps: the carrying capacities' multiplier. */
+  caps: number;
+  /** The kingfisher hunts in the shallows. */
+  kingfisher: boolean;
+  /** Safety net: a species never quite dies out (a few fish come down from upstream). */
+  restock: boolean;
+  /** Rain fills the catchment and raises the stream after a delay (and the seasons change its base flow). */
+  rainRaisesStream: boolean;
+}
+
 export interface ValleySettings {
   water: WaterSettings;
   wind: WindState;
   trees: TreeSettings;
   time: TimeSettings;
   weather: WeatherSettings;
+  ecosystem: EcosystemSettings;
+}
+
+export function defaultEcosystem(): EcosystemSettings {
+  return {
+    evolution: true,
+    mutation: 1,
+    predators: 0.5,
+    caps: 1,
+    kingfisher: true,
+    restock: true,
+    rainRaisesStream: true,
+  };
 }
 
 export function defaultSettings(): ValleySettings {
@@ -54,6 +85,7 @@ export function defaultSettings(): ValleySettings {
     trees: { flexibility: 1, sway: 1, flutter: 1, delay: 1, species: {} },
     time: { timeScale: TIME_SPEEDS.minuteIsHour, paused: false, lockedDay: null },
     weather: { mode: 'auto' },
+    ecosystem: defaultEcosystem(),
   };
 }
 
@@ -71,6 +103,9 @@ export const LIMITS = {
   flutter: [0, 3],
   delay: [0.3, 3],
   speciesFlex: [0.3, 3],
+  mutation: [0, 3],
+  predators: [0, 1],
+  caps: [0.25, 3],
 } as const satisfies Record<string, readonly [number, number]>;
 
 function num(v: unknown, fallback: number, [lo, hi]: readonly [number, number]): number {
@@ -86,6 +121,8 @@ export function normalizeSettings(raw: unknown): ValleySettings {
   const t = r.trees ?? {};
   const ti = r.time ?? {};
   const we = r.weather ?? {};
+  const ec = r.ecosystem ?? {};
+  const bool = (v: unknown, fallback: boolean) => (typeof v === 'boolean' ? v : fallback);
   let dirX = num(wi.dirX, d.wind.dirX, [-1, 1]);
   let dirZ = num(wi.dirZ, d.wind.dirZ, [-1, 1]);
   const len = Math.hypot(dirX, dirZ);
@@ -129,6 +166,15 @@ export function normalizeSettings(raw: unknown): ValleySettings {
     },
     weather: {
       mode: mode === 'auto' || WEATHER_KINDS.includes(mode as WeatherKind) ? (mode as WeatherSettings['mode']) : 'auto',
+    },
+    ecosystem: {
+      evolution: bool(ec.evolution, d.ecosystem.evolution),
+      mutation: num(ec.mutation, d.ecosystem.mutation, LIMITS.mutation),
+      predators: num(ec.predators, d.ecosystem.predators, LIMITS.predators),
+      caps: num(ec.caps, d.ecosystem.caps, LIMITS.caps),
+      kingfisher: bool(ec.kingfisher, d.ecosystem.kingfisher),
+      restock: bool(ec.restock, d.ecosystem.restock),
+      rainRaisesStream: bool(ec.rainRaisesStream, d.ecosystem.rainRaisesStream),
     },
   };
 }

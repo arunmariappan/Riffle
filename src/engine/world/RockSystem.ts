@@ -1,4 +1,5 @@
 import * as THREE from 'three/webgpu';
+import { globals } from '../globals';
 import {
   attribute,
   texture,
@@ -86,9 +87,11 @@ function rockMaterial(textureId: string): THREE.MeshStandardNodeMaterial {
     const under = smoothstep(-0.02, 0.05, below);
     // Dark wet band at the waterline (plan 8) and darker, glossier stone below it.
     const wetLine = smoothstep(-0.35, 0, below).mul(float(1).sub(under));
-    const wet = green.mul(float(1).sub(wetLine.mul(0.45)).sub(under.mul(0.2)));
+    // Rain wets the stones above the water too (plan 6.7).
+    const rainWet = globals.wetness.mul(float(1).sub(under));
+    const wet = green.mul(float(1).sub(wetLine.mul(0.45)).sub(under.mul(0.2)).sub(rainWet.mul(0.3)));
     m.colorNode = wet;
-    m.roughnessNode = mix(float(0.85), float(0.3), wetLine.max(under));
+    m.roughnessNode = mix(float(0.85), float(0.3), wetLine.max(under).max(rainWet.mul(0.8)));
     m.emissiveNode = wet.mul(causticLight(positionWorld, level));
   } else {
     m.colorNode = green;

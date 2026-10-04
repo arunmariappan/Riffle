@@ -1,8 +1,15 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { decodeRiffle, encodeRiffle, floatsToBytes, bytesToFloats, RiffleFormatError } from '../../src/save/format';
 import { decodeSave, encodeSave, SAVE_VERSION, migrate, type SaveData } from '../../src/save/saveData';
 import { Autosaver, MemoryStore, autosaveName, parseAutosaveName } from '../../src/save/autosave';
-import { defaultSettings, normalizeSettings, withSetting, getSetting } from '../../src/state/settings';
+import {
+  defaultEcosystem,
+  defaultSettings,
+  normalizeSettings,
+  withSetting,
+  getSetting,
+} from '../../src/state/settings';
 import { createEditLayer, newUid, addItem } from '../../src/builder/editLayer';
 
 function sample(): SaveData {
@@ -112,5 +119,41 @@ describe('autosave', () => {
     expect(parseAutosaveName(autosaveName(1234))).toBe(1234);
     expect(parseAutosaveName('notes.txt')).toBeNull();
     expect(autosaveName(9) < autosaveName(10)).toBe(true);
+  });
+});
+
+describe('older valley files (Phase 6: version 2)', () => {
+  it('opens a version 1 valley: settings kept, the ecosystem added, its stream left as saved', async () => {
+    const v1 = JSON.parse(readFileSync(new URL('./fixtures/save-v1.json', import.meta.url), 'utf8')) as Record<
+      string,
+      unknown
+    >;
+    const bytes = await encodeRiffle({ version: 1, json: v1, sections: {} });
+    const { data, sections } = await decodeSave(bytes);
+    expect(SAVE_VERSION).toBe(2);
+    expect(data.version).toBe(2);
+    expect(data.settings.water.discharge).toBe(6.5);
+    expect(data.settings.trees.species.bamboo).toBe(1.6);
+    expect(data.settings.ecosystem).toEqual({ ...defaultEcosystem(), rainRaisesStream: false });
+    expect(data.edits.added).toHaveLength(2);
+    expect(data.clock).toBe(8237100);
+    expect(Object.keys(sections)).toEqual([]);
+  });
+
+  it('new valleys follow the rain and keep the ecosystem in binary sections', async () => {
+    const data = sample();
+    expect(data.settings.ecosystem.rainRaisesStream).toBe(true);
+    const ecology = new TextEncoder().encode('{"v":1}');
+    const back = await decodeSave(await encodeSave({ data, sections: { ecology, plants: new Uint8Array([7]) } }));
+    expect(new TextDecoder().decode(back.sections.ecology)).toBe('{"v":1}');
+    expect(back.data.settings.ecosystem).toEqual(defaultEcosystem());
+  });
+
+  it('clamps hand-edited ecosystem settings', () => {
+    const s = normalizeSettings({ ecosystem: { predators: 5, mutation: -1, caps: 'lots', kingfisher: 0 } });
+    expect(s.ecosystem.predators).toBe(1);
+    expect(s.ecosystem.mutation).toBe(0);
+    expect(s.ecosystem.caps).toBe(1);
+    expect(s.ecosystem.kingfisher).toBe(true);
   });
 });

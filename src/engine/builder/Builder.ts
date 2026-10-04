@@ -870,7 +870,7 @@ export class Builder {
   /** The current valley as `.riffle` bytes. */
   async saveBytes(): Promise<Uint8Array> {
     await this.undo.idle();
-    return encodeSave({ data: this.world.snapshot(), sections: {} });
+    return encodeSave({ data: this.world.snapshot(), sections: await this.world.saveSections() });
   }
 
   // --- Per frame ---------------------------------------------------------------------------------------------------
@@ -949,6 +949,30 @@ export class Builder {
         legend: world.overlays.legend,
         busy: world.items.busy ? 'Settling the stone' : ui.busy === 'Settling the stone' ? null : ui.busy,
       });
+      const eco = world.ecology;
+      const r = eco.report;
+      if (r) {
+        const snap = r.snapshot;
+        ui.set({
+          ecology: {
+            names: world.catalog.fish.map((f) => f.name),
+            populations: snap.populations,
+            fry: snap.fry,
+            brightness: snap.brightness,
+            swimStrength: snap.swimStrength,
+            biodiversity: snap.biodiversity,
+            oxygen: snap.oxygen,
+            oxygenMin: snap.oxygenMin,
+            waterTemp: snap.waterTemp,
+            discharge: world.flow.discharge,
+            weather: r.weather,
+            turbidity: r.turbidity,
+            plants: eco.plants.records.size,
+            plantGene: eco.plants.meanGene(),
+            historyRevision: eco.historyRevision,
+          },
+        });
+      }
     }
   }
 

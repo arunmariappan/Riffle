@@ -45,6 +45,8 @@ export interface AppParams {
   hour?: number;
   spot?: string;
   freeze: boolean;
+  /** Show fish in every stretch at once (tests, the fish benchmark). */
+  allFish: boolean;
   bench: string | null;
   exposure?: number;
   stats: boolean;
@@ -71,6 +73,7 @@ export function readParams(): AppParams {
     hour: num('hour'),
     spot: p.get('spot') ?? undefined,
     freeze: p.has('freeze') || p.has('test'),
+    allFish: p.has('allfish') || p.get('bench') === 'fish',
     bench: p.get('bench'),
     exposure: num('exposure'),
     stats: p.has('stats') || p.has('bench') || import.meta.env.DEV,
@@ -87,6 +90,7 @@ const PENDING = 'open-pending.riffle';
 interface Session {
   seed: string;
   restore?: SaveData;
+  sections?: Record<string, Uint8Array>;
 }
 
 function ago(time: number): string {
@@ -133,9 +137,9 @@ export function App({ adapterInfo }: { adapterInfo: string }) {
   const startFrom = useCallback(
     async (bytes: Uint8Array) => {
       try {
-        const { data } = await decodeSave(bytes);
+        const { data, sections } = await decodeSave(bytes);
         void requestPersistence();
-        setSession({ seed: data.seed, restore: data });
+        setSession({ seed: data.seed, restore: data, sections });
       } catch (err) {
         toast(err instanceof Error ? err.message : String(err), 'error');
       }
@@ -206,6 +210,8 @@ export function App({ adapterInfo }: { adapterInfo: string }) {
             hour: params.hour,
             spot: params.spot,
             restore: session.restore,
+            restoreSections: session.sections,
+            allFish: params.allFish,
             onProgress: (label, fraction) => setLoading({ label, fraction }),
           });
           if (disposed) return;

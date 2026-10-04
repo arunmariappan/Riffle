@@ -1,14 +1,14 @@
 /**
  * What a saved valley holds (plan 6.11): the seed, the time, every panel setting, your edit layer and where you
- * were standing. Binary sections (ecology grids and cohorts) ride alongside. A version number and a migration table
- * keep old saves loading after updates. Pure TypeScript.
+ * were standing. Binary sections (the ecosystem's cohorts, environment and plants) ride alongside. A version number
+ * and a migration table keep old saves loading after updates. Pure TypeScript.
  */
 import { encodeRiffle, decodeRiffle, RiffleFormatError } from './format';
-import { normalizeSettings, type ValleySettings } from '../state/settings';
+import { defaultEcosystem, normalizeSettings, type ValleySettings } from '../state/settings';
 import { validateEditLayer, type EditLayer } from '../builder/editLayer';
 
 /** Bump when the saved JSON changes shape, and add a migration from the previous version. */
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export interface SavedView {
   mode: 'explore' | 'builder';
@@ -39,7 +39,19 @@ export interface SaveBundle {
 type Migration = (json: Record<string, unknown>) => Record<string, unknown>;
 
 /** migrations[v] turns a version-v document into version v + 1. */
-const MIGRATIONS: Record<number, Migration> = {};
+const MIGRATIONS: Record<number, Migration> = {
+  /**
+   * Version 2 (Phase 6) adds the ecosystem: its settings in the document and its state in the `ecology` and `plants`
+   * sections. A valley saved before it keeps its stream as it was saved: rain doesn't raise it until you turn that on.
+   */
+  1: (json) => {
+    const settings = (json.settings && typeof json.settings === 'object' ? json.settings : {}) as Record<
+      string,
+      unknown
+    >;
+    return { ...json, settings: { ...settings, ecosystem: { ...defaultEcosystem(), rainRaisesStream: false } } };
+  },
+};
 
 export function migrate(json: Record<string, unknown>, from: number, to = SAVE_VERSION): Record<string, unknown> {
   let doc = json;

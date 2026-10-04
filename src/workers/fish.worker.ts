@@ -82,7 +82,7 @@ const api = {
     count: number,
     spread = 2,
     schoolId = 0,
-    genes?: { genes: FishGenes; age?: number }[],
+    genes?: { genes: FishGenes; age?: number; pattern?: number }[],
   ): number {
     const placed =
       school?.release(
