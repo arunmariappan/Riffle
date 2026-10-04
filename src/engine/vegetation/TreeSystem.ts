@@ -329,6 +329,22 @@ export class TreeSystem {
     }
   }
 
+  /** The tree closest to (x, z), with its height (tests and camera framing). */
+  nearest(x: number, z: number): { kind: string; x: number; y: number; z: number; height: number } | null {
+    let best: { kind: string; x: number; y: number; z: number; height: number } | null = null;
+    let bestD = Infinity;
+    for (const sp of this.species) {
+      sp.instances.forEach((inst, k) => {
+        const d = (inst.x - x) ** 2 + (inst.z - z) ** 2;
+        if (d < bestD) {
+          bestD = d;
+          best = { kind: sp.def.id, x: inst.x, y: inst.y, z: inst.z, height: sp.heights[k] as number };
+        }
+      });
+    }
+    return best;
+  }
+
   /** Near-detail instance count (for stats). */
   nearCount(): number {
     return this.species.reduce((sum, sp) => sum + sp.variants.reduce((s, v) => s + v.count, 0), 0);

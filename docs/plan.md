@@ -52,7 +52,7 @@ on your PC later. This section is updated at the end of every phase; each phase 
 | 0 — Groundwork and hardware check | M1 | **Done** (P1 open) | Scaffold, CI, flow solver prototype, rendering test scene, e2e in Chrome and Edge |
 | 1 — The valley | M1 | **Done** (P6–P8 open) | Generated valley with erosion, terrain LOD, sky and time of day, walking, first planting; 58 fps at 1080p High |
 | 2 — Living water | M1 | **Done** (P10–P12 open) | Flow solver in a worker, river/pond/waterfall water with flow-map ripples, refraction, foam, caustics, wading and swimming, debris, first barb school; 54.6 fps |
-| 3 — Wind and vegetation | M2 | **In progress** (code in; e2e tests and G1–G4 pending) | One wind state for every consumer, tree ferns, ferns, wildflowers and orchids, six water plants placed by depth and current, grass that bends away from you, falling petals, leaves and pollen, season looks. Not seen on screen yet |
+| 3 — Wind and vegetation | M2 | **Code done** (G1–G4 pending) | One wind state for every consumer, tree ferns, ferns, wildflowers and orchids, six water plants placed by depth and current, grass that bends away from you, falling petals, leaves and pollen, waterfall spray and mist, season looks; e2e and storm benchmark written. Not seen on screen yet |
 | 4 — Builder | M2 | Not started | |
 | 5 — Fish | M3 | Not started | |
 | 6 — Ecosystem and evolution | M3 | Not started | |
@@ -73,7 +73,7 @@ on your PC later. This section is updated at the end of every phase; each phase 
 | P7 | **Volumetric clouds and cloud shadows**: the sky uses three.js SkyMesh with its 2D cloud layer for now (see C7). | Me | Phase 1 | Open (Phase 6 weather or Phase 9) |
 | P8 | **First load compiles shaders for 20–35 s** in a fresh browser profile (Windows D3D12 shader compilation). The loading screen stays up until frames are smooth, and your own Chrome caches the shaders, so later loads are faster. | Me | Phase 1 | Mitigated |
 | P10 | **Terrain detail normal maps**: D3D12 allows 16 samplers per shader stage, so only the rock layer keeps a normal map (meadow and pebble normals were dropped). Packing layers into an array texture would restore them. | Me | Phase 2 | Open (Phase 9) |
-| P11 | **Waterfall spray and mist particles** aren't built yet; the falling sheet and the plunge foam are. | Cloud session | Phase 2 | Open (rest of Phase 3, or Phase 9) |
+| P11 | **Waterfall spray and mist particles**: built in Phase 3 (`src/sim/particles/spray.ts`, `src/engine/water/Spray.ts`), with splashes for dropped stones. Needs a first look (G1). | — | Phase 2 | **Closed** (code; look in G1) |
 | P12 | Looking up from underwater shows the world above (refracted) but no Snell's window or total internal reflection. | Me | Phase 2 | Accepted |
 | P9 | The main bundle is 5 MB (EZ-Tree inlines its textures). Code-splitting the engine behind the start screen is planned. | Me | Phase 0 | Open (Phase 9) |
 | P13 | **The Workshop page and `pnpm bake` (D31) don't exist yet.** Nothing has needed them so far: erosion runs on the CPU (C8) and lite trees stand in for impostors (C10). The `bake` script in `package.json` points to a missing `tools/bake.ts`. Phase 4 catalog thumbnails need either the Workshop (a GPU job, run on your PC) or thumbnails rendered live in the app. | Cloud session (code), you (runs) | Phase 3 | Open (Phase 4) |
@@ -100,6 +100,7 @@ on your PC later. This section is updated at the end of every phase; each phase 
 | C15 | — | The renderer asks the adapter for more sampled textures per shader stage (WebGPU's default is 16) | The terrain shader needs 17 with shadows and sky light |
 | C16 | GPU compute particles; a wind texture (D15) | Falling petals, leaves and pollen are 260 instanced quads moved on the CPU. The wind is a few shader uniforms plus gust fronts computed in the shader, with a CPU twin (`src/sim/wind/windField.ts`) that particles, audio and ecology read. There is no wind texture | Same reason as C14; the analytic wind needs no texture and the CPU twin keeps the gusts identical everywhere |
 | C17 | Water plants placed by the scatter rules with everything else | Water plants are placed after the first flow solve, using the solved depth and current at each spot (`src/sim/scatter/aquatic.ts`): lotus and lilies in the still pond, bed plants by their depth and flow limits, Java fern and moss on submerged stones | The scatter needs the water, which only exists after the solve |
+| C18 | GPU particles for waterfall spray and mist | Spray, mist and splashes stepped on the CPU (`SprayField`, a few hundred particles) and drawn as camera-facing quads | Same reason as C14 and C16; pure TypeScript is unit-tested in Node |
 
 ### Local GPU checks (run on your PC)
 
@@ -109,10 +110,10 @@ wait for P1/P2. Commands assume `pnpm dev` is running, except the benchmark (`pn
 
 | # | Check | How | Phase | Status |
 |---|---|---|---|---|
-| G1 | **First look at the Phase 3 vegetation**: ferns, wildflowers, orchids and tree ferns on the banks; lotus and lilies on the pond; Java fern, crypts, Rotala and moss in the stream bending with the current; falling petals, leaves and pollen; grass bending away from your feet. `plants.visibleCount` above 0 at the pond. | `npx tsx tools/golden.ts test-results/p3 riffles,pond,pool,bend 10`, then `npx tsx tools/probe.ts "/?autostart&freeze&spot=pond&hour=10" "window.__riffle.world.plants.visibleCount"` | 3 | Open |
+| G1 | **First look at the Phase 3 vegetation**: ferns, wildflowers, orchids and tree ferns on the banks; lotus and lilies on the pond; Java fern, crypts, Rotala and moss in the stream bending with the current; falling petals, leaves and pollen; grass bending away from your feet; spray and mist at the foot of the waterfall (`tools/views.ts` has a waterfall view). `plants.visibleCount` above 0 at the pond. | `npx tsx tools/golden.ts test-results/p3 riffles,pond,pool,bend 10`, `npx tsx tools/views.ts test-results/p3-views`, then `npx tsx tools/probe.ts "/?autostart&freeze&spot=pond&hour=10" "window.__riffle.world.plants.visibleCount"` | 3 | Open |
 | G2 | **Spring and autumn golden shots** look right (Phase 3 done-when) | `npx tsx tools/golden.ts test-results/p3-spring riffles,pond 10 75`, and the same with `test-results/p3-autumn` and day `300` | 3 | Open |
-| G3 | **Phase 3 e2e tests**: a wind change reaches trees, bamboo, grass, water and particles within 1 s; each tree dynamics slider makes a visible difference | `pnpm test:e2e` (once the cloud session writes them) | 3 | Open (tests not written yet) |
-| G4 | **Storm-wind benchmark**, under a minute: stays within the budget at 1080p High, ≤ 1,500 draw calls | `pnpm bench` with storm wind | 3 | Open (test not written yet) |
+| G3 | **Phase 3 e2e tests** (`tests/e2e/wind.spec.ts`): a wind change reaches the shaders, water, clouds and particles within 1 s and the trees and grass visibly move more; each tree dynamics slider changes the picture of a tree in frozen storm wind. If a threshold is off, tune it from the logged numbers rather than loosening the test blindly | `pnpm test:e2e tests/e2e/wind.spec.ts` | 3 | Open (tests written) |
+| G4 | **Benchmarks**, 20 s each: the valley and the storm-wind flights stay within the budget at 1080p High, ≤ 1,500 draw calls, no more than 2 hitches in the storm | `pnpm bench` (runs both flights) | 3 | Open (test written) |
 
 ### Handoff to the cloud session
 
@@ -121,9 +122,9 @@ State on 2026-10-04: Phases 0–2 are done; the Phase 3 code is committed and pa
 repo root.
 
 **Next, in order:**
-1. Finish Phase 3: write the e2e tests for G3 and the storm benchmark for G4, the waterfall spray and mist (P11) if
-   it fits, `docs/phases/phase-3.md` ticked off, and a **Built** note under [Phase 3](#phase-3--wind-and-vegetation-l).
-   Leave Phase 3 as *code done, GPU checks pending* until G1–G4 pass on your PC.
+1. ~~Finish Phase 3~~ **Done** in the cloud session: the e2e tests (G3), the storm benchmark (G4), the waterfall
+   spray and mist (P11), the checklist and the Built note. Phase 3 stays *code done, GPU checks pending* until G1–G4
+   pass on your PC.
 2. Phases 4–9 in order, using each phase's text and **Done when** list in [10](#10-phases). After each phase: update the
    Progress table, add a Built note, write `docs/phases/phase-N.md`, add a G row for every check that needs a GPU, add
    P rows for open points, then commit and push.
@@ -966,7 +967,7 @@ the full scatter rules; and the season looks.
 within 1 s; each tree dynamics slider makes a visible difference; the full valley with storm wind stays within the
 budget (including ≤ 1,500 draw calls); spring and autumn golden shots look right.
 
-**Built so far (2026-10-04, paused here; not seen on screen yet, see P14):**
+**Built (2026-10-04; code done, not seen on screen yet, see P14 and G1–G4):**
 - **One wind state** (`World.setWind`): the Wind panel changes the CPU state and every shader uniform together:
   trees, bamboo, grass, plants, water chop (strongest on the pond) and cloud speed. A CPU twin of the shader's gust
   fronts (`src/sim/wind/windField.ts`, C16) drives the falling particles, with calm-breeze and monsoon-storm presets
@@ -988,8 +989,18 @@ budget (including ≤ 1,500 draw calls); spring and autumn golden shots look rig
 - **Tests**: 40 unit tests, 4 of them new for the wind field (Beaufort names, storm stronger and never negative, gust
   fronts travel downwind, blows in the wind direction).
 
-**Left to do:** the e2e tests for the wind reaching every consumer and the tree sliders (G3), the storm benchmark
-(G4), the waterfall spray (P11), `docs/phases/phase-3.md` ticked off, then the local checks G1–G4.
+- **Waterfall spray and mist** (closes P11): fine spray thrown up where the sheet hits the pool and slow mist puffs
+  that drift downwind, plus splashes for things dropped in the water. The particles are stepped on the CPU in pure
+  TypeScript (`src/sim/particles/spray.ts`, C18) and drawn as soft camera-facing quads, only within 260 m of the fall.
+- **e2e tests** (`tests/e2e/wind.spec.ts`, G3): after a change to storm wind, the shader uniforms, the water chop,
+  the cloud speed and the falling particles' drift all follow within a second, and a tree and a meadow visibly move
+  more (frame-to-frame picture change). Each of the four tree dynamics sliders changes the picture of a tree in frozen
+  storm wind (`World.frozenTime` stops wind, water and shader time so only the slider differs).
+- **Storm benchmark** (G4): `?bench=storm` flies the valley in monsoon-storm wind; both flights now also check
+  ≤ 1,500 draw calls.
+- **Tests**: 45 unit tests (+5 for spray and mist).
+- **Not met yet**: the done-when checks all need a GPU (G1–G4). Tree impostors from the Workshop stay replaced by lite
+  trees (C10).
 
 ### Phase 4 — Builder (L)
 

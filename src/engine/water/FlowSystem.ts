@@ -335,6 +335,36 @@ export class FlowSystem {
     return (this.levels[this.valley.pond.section] as number) ?? 0;
   }
 
+  /** The waterfall's lip, direction, width and levels (spray and mist, audio). */
+  waterfallInfo(): {
+    x: number;
+    z: number;
+    tx: number;
+    tz: number;
+    nx: number;
+    nz: number;
+    halfWidth: number;
+    top: number;
+    foot: number;
+    strength: number;
+  } {
+    const p = this.path;
+    const w = this.valley.profile.waterfall.section;
+    const i = Math.max(0, w - 1);
+    return {
+      x: p.points[i * 2] as number,
+      z: p.points[i * 2 + 1] as number,
+      tx: p.tangents[i * 2] as number,
+      tz: p.tangents[i * 2 + 1] as number,
+      nx: p.normals[i * 2] as number,
+      nz: p.normals[i * 2 + 1] as number,
+      halfWidth: (this.valley.profile.halfWidth[i] as number) * 0.85,
+      top: this.waterfallTop.value as number,
+      foot: (this.waterfallTop.value as number) - (this.waterfallDrop.value as number) + 0.3,
+      strength: (this.discharge * this.speedMultiplier) / 4,
+    };
+  }
+
   private updateLevelMap(): void {
     const hf = this.valley.heightfield;
     const toHalf = THREE.DataUtils.toHalfFloat;

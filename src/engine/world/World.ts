@@ -19,8 +19,9 @@ import { Debris } from '../water/Debris';
 import { FishSystem } from '../fauna/FishSystem';
 import { PlantSystem } from '../vegetation/PlantSystem';
 import { AirParticles } from '../vegetation/AirParticles';
+import { WaterEffects } from '../water/Spray';
 import { scatterAquatic } from '../../sim/scatter/aquatic';
-import { CALM_BREEZE, type WindState } from '../../sim/wind/windField';
+import { CALM_BREEZE, windVelocityAt, type WindState } from '../../sim/wind/windField';
 import { DENISON_BARB } from '../../sim/boids/school';
 import { DENISON_PATTERN } from '../fauna/fishMaterial';
 import { globals } from '../globals';
@@ -72,6 +73,13 @@ export class World {
   readonly fish: FishSystem;
   readonly plants: PlantSystem;
   readonly air: AirParticles;
+  /** Waterfall spray and mist, splashes. */
+  readonly waterFx: WaterEffects;
+  /**
+   * When set, wind, water and shader animation use this fixed time instead of the running clock, so screenshots are
+   * repeatable (tests).
+   */
+  frozenTime: number | null = null;
   /** The CPU wind state (authoritative); shader uniforms follow it. */
   readonly windState: WindState = { ...CALM_BREEZE };
   readonly physics: Physics;
@@ -82,6 +90,7 @@ export class World {
   quality: QualityPreset;
   private pipeline: PipelineHandle;
   private seasonTimer = 0;
+  private flowRevision = -1;
   private unsubscribe: (() => void) | null = null;
 
   private constructor(parts: {
@@ -112,6 +121,7 @@ export class World {
     this.plants = parts.plants;
     this.plants.setFlow(this.flow);
     this.air = new AirParticles((x, z) => this.heightAt(x, z));
+    this.waterFx = new WaterEffects();
     this.wind = parts.wind;
     this.quality = parts.quality;
     this.clock = parts.clock;
@@ -128,6 +138,7 @@ export class World {
       this.rocks.group,
       this.flow.group,
       this.debris.mesh,
+      this.waterFx.group,
       this.fish.group,
     );
     this.sky = new SkySystem(renderer, scene, camera, 260);
@@ -362,13 +373,40 @@ export class World {
     this.engine.setRenderScale(QUALITY_RENDER_SCALE[quality]);
   }
 
+  /** What every wind consumer is using right now (Phase 3 e2e: a wind change reaches all of them within 1 s). */
+  windReport(): {
+    state: WindState;
+    shader: { speed: number; dirX: number; dirZ: number; gustiness: number; turbulence: number };
+    waterChop: number;
+    pondChop: number;
+    cloudSpeed: number;
+    particleDrift: [number, number];
+  } {
+    const w: any = this.wind;
+    return {
+      state: { ...this.windState },
+      shader: {
+        speed: w.speed.value,
+        dirX: w.direction.value.x,
+        dirZ: w.direction.value.y,
+        gustiness: w.gustiness.value,
+        turbulence: w.turbulence.value,
+      },
+      waterChop: (this.flow.look.chop as any).value,
+      pondChop: (this.flow.pondLook.chop as any).value,
+      cloudSpeed: (this.sky.sky.cloudSpeed as any).value,
+      particleDrift: [this.air.drift[0], this.air.drift[1]],
+    };
+  }
+
   update(info: FrameInfo): void {
     const { camera } = this.engine;
     this.clock.advance(info.dt);
-    (this.wind.time as any).value = info.time;
-    globals.time.value = info.time;
+    const windTime = this.frozenTime ?? info.time;
+    (this.wind.time as any).value = windTime;
+    globals.time.value = windTime;
     (globals.player.value as THREE.Vector3).copy(this.player.position);
-    this.flow.update(info.time);
+    this.flow.update(windTime);
     if (this.mode === 'explore') this.player.update(info.dt, this.input, camera);
     this.physics.step(info.dt);
 
@@ -432,7 +470,17 @@ export class World {
     this.terrain.update(camera.position);
     this.trees.update(camera.position, info.time);
     this.plants.update(camera.position, info.time);
-    this.air.update(info.dt, camera.position, info.time, this.windState);
+    this.air.update(info.dt, camera.position, windTime, this.windState);
+    if (this.flow.revision !== this.flowRevision) {
+      this.flowRevision = this.flow.revision;
+      this.waterFx.setWaterfall(this.flow.waterfallInfo());
+    }
+    this.waterFx.update(
+      info.dt,
+      camera,
+      (x, z) => windVelocityAt(this.windState, x, z, windTime),
+      (x, z) => this.flow.surfaceAt(x, z) ?? this.heightAt(x, z),
+    );
     this.grass.update(camera.position);
     this.debris.update(info.dt, camera.position, info.time);
     this.fish.update(info.dt, this.player.position);

@@ -25,6 +25,8 @@ export class AirParticles {
   /** How many particles are active (0..1) and the mix (petal, leaf, autumn leaf; the rest is pollen). */
   amount = 0.4;
   mix = { petal: 0.5, leaf: 0.2, autumnLeaf: 0 };
+  /** Mean horizontal drift of the live particles (m/s), smoothed over about half a second (tests, audio). */
+  readonly drift: [number, number] = [0, 0];
   private initialized = false;
 
   constructor(private readonly heightAt: (x: number, z: number) => number) {
@@ -85,6 +87,9 @@ export class AirParticles {
     }
     const active = Math.round(COUNT * Math.min(1, this.amount));
     let respawned = false;
+    let sumX = 0;
+    let sumZ = 0;
+    let moved = 0;
     for (let i = 0; i < active; i++) {
       let x = this.pos[i * 3] as number;
       let y = this.pos[i * 3 + 1] as number;
@@ -92,8 +97,13 @@ export class AirParticles {
       const [wx, wz] = windVelocityAt(wind, x, z, time);
       const kind = this.kind.getX(i);
       const drag = kind === 3 ? 0.9 : 0.5;
-      x += (wx * drag + Math.sin(time * 1.7 + i) * 0.15) * dt;
-      z += (wz * drag + Math.cos(time * 1.3 + i * 0.7) * 0.15) * dt;
+      const dx = wx * drag + Math.sin(time * 1.7 + i) * 0.15;
+      const dz = wz * drag + Math.cos(time * 1.3 + i * 0.7) * 0.15;
+      x += dx * dt;
+      z += dz * dt;
+      sumX += dx;
+      sumZ += dz;
+      moved++;
       y += ((this.vel[i * 3 + 1] as number) + Math.sin(time * 2.3 + i * 1.3) * 0.12) * dt;
       const ground = this.heightAt(x, z);
       if (y < ground + 0.02 || (x - camera.x) ** 2 + (z - camera.z) ** 2 > RADIUS * RADIUS * 1.4 || y > ground + 20) {
@@ -116,6 +126,11 @@ export class AirParticles {
     }
     this.mesh.count = active;
     this.mesh.instanceMatrix.needsUpdate = true;
+    if (moved > 0) {
+      const k = Math.min(1, dt * 4);
+      this.drift[0] += (sumX / moved - this.drift[0]) * k;
+      this.drift[1] += (sumZ / moved - this.drift[1]) * k;
+    }
     if (respawned) this.kind.needsUpdate = true;
   }
 }

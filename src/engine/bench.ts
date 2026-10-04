@@ -1,6 +1,7 @@
 import * as THREE from 'three/webgpu';
 import type { Engine } from './Engine';
 import type { World } from './world/World';
+import { MONSOON_STORM } from '../sim/wind/windField';
 
 export interface BenchResult {
   name: string;
@@ -19,16 +20,20 @@ export interface BenchResult {
   drawCallsMax: number;
   trianglesMax: number;
   quality: string;
+  /** Wind speed during the run (m/s). */
+  windSpeed: number;
 }
 
 /**
  * Benchmark flythrough (plan 9): glides the camera along the stream through every viewpoint and records frame
- * times. Kept short by default (20 s) until the GPU stability check passes (open item P2).
+ * times. Kept short by default (20 s) until the GPU stability check passes (open item P2). `storm` runs the same
+ * flight in monsoon-storm wind (Phase 3 done-when: the full valley in storm wind stays within the budget).
  */
 export async function runBenchmark(engine: Engine, world: World, name: string): Promise<BenchResult> {
   const params = new URLSearchParams(window.location.search);
   const seconds = Number(params.get('benchSeconds') ?? 20);
   world.mode = 'fixed';
+  if (name === 'storm') world.setWind(MONSOON_STORM);
   const points = world.valley.spots.map((s) => new THREE.Vector3(s.x, world.heightAt(s.x, s.z) + 3, s.z));
   const curve = new THREE.CatmullRomCurve3(points, false, 'centripetal');
   const frameMs: number[] = [];
@@ -76,6 +81,7 @@ export async function runBenchmark(engine: Engine, world: World, name: string): 
           drawCallsMax,
           trianglesMax,
           quality: world.quality,
+          windSpeed: world.windState.speed,
         });
       }
     });
